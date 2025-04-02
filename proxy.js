@@ -51,7 +51,7 @@ class SessionProxyManager {
             })
 
             this.proxyList = await res.data.results
-            console.Info("PROXY_LIST", this.proxyList)
+            console.info("PROXY_LIST", this.proxyList)
         } catch(err){
             console.error("An error occurred whie fetching proxy list!")
             throw err
@@ -73,9 +73,43 @@ class SessionProxyManager {
             this.currentProxy = this.proxyList[randomProxyListIndex]
             this.lastAssignedTime = Date.now()
             this.isFresh = true
-            console.log(`Session proxy obtained! Activate session proxy id => ${this.currentProxy.id}`)
+            console.log(`Session proxy obtained! Activate session proxy id => ${ this.currentProxy.id }`)
         }
         return this.currentProxy
+    }
+
+    async inspectProxy({ password, username, proxy_address, port }){
+        const proxyCheckerURL = this.inspectorUrl
+        try {
+            const res = await axios({
+                method: "POST",
+                url: proxyCheckerURL,
+                proxy: {
+                    host: proxy_address,
+                    port: port,
+                    protocol: "http",
+                    auth: {
+                        password: password,
+                        username: username
+                    }
+                },
+                data: {
+                    defaultIceServer: {
+                        sdp: "",
+                        localIPv4: [],
+                        externalIPv4: [ proxy_address ],
+                        localIPv6: [],
+                        externalIPv6: []
+                    }
+                }
+            })
+    
+            const proxyDetails = await res.data
+            return proxyDetails
+        } catch(err){
+            console.log("An error occured while fetching the proxy details.")
+            throw err
+        }
     }
 }
 

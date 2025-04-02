@@ -40,7 +40,7 @@ const getNetResourceActivity = async (url) => {
     // const resourceId = url.split("/").at(-1)
 
     try {
-        const proxyDetails = await inspectProxy(proxy)
+        const proxyDetails = await sessionProxyManager.inspectProxy(proxy)
     //     page.on('response', response => {
     //         if(response.url().includes(resourceId)){
     //             activity.push(
@@ -73,44 +73,6 @@ const getNetResourceActivity = async (url) => {
         throw err
     } finally {
         await browser.close()
-    }
-}
-
-const inspectProxy = async (proxy) => {
-    const proxyCheckerURL = "https://pixelscan.net/s/api/ci"
-    try {
-        const res = await axios({
-            method: "POST",
-            url: proxyCheckerURL,
-            proxy: {
-                host: proxy.proxy_address,
-                port: proxy.port,
-                protocol: "http",
-                auth: {
-                    password: proxy.password,
-                    username: proxy.username
-                }
-            },
-            data: {
-                defaultIceServer: {
-                    sdp: "",
-                    localIPv4: [],
-                    externalIPv4: [proxy.host],
-                    localIPv6: [],
-                    externalIPv6: []
-                }
-            }
-        })
-
-        if(res.status !== 200){
-            // throw new Error("Proxy Inspection failed.")
-        }
-
-        const proxyDetails = await res.data
-        return proxyDetails
-    } catch(err){
-        console.log("An error occured while fetching the proxy details.")
-        throw err
     }
 }
 
