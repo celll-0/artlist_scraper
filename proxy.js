@@ -1,0 +1,82 @@
+const axios = require("axios")
+
+class SessionProxyManager {
+    constructor({ mode = "direct", sessionDuration = 60000 }){
+        this.apiUrl = "https://proxy.webshare.io/api/v2/proxy/list/"
+        this.inspectorUrl = "https://pixelscan.net/s/api/ci"
+        this.currentProxy = null
+        this.lastAssignedTime = null
+        this.isFresh = true
+        this.proxyListSize = 10
+        this.sessionDuration = sessionDuration
+        this.proxyList = []
+
+        if(!["direct", "backbone"].includes(mode)){
+            throw new TypeError("Invalid proxy mode. Proxy mode must be either direct or backbone.")
+        }
+
+        this.connectionMode = mode
+    }
+
+    notifyFirstUse(){
+        /**
+         * Notify the session manager the of the current proxy's first use
+         */
+        this.isFreshProxy = false
+
+    }
+
+    async fetchProxyList(){
+        /**
+         * An asynchronous method that makes a request to
+         * the Webshare proxy api for a list of proxies, and updates
+         * the SessionProxyManager' proxyList directly. The
+         * request contains a page parameter with a value of 1.
+         * The page size and proxy mode can be changed via the
+         * class properties.
+         */
+        try {
+            console.log("Fetching proxy list...")
+            const res = await axios({
+                method: "GET",
+                url: this.apiUrl,
+                params: {
+                    mode: this.connectionMode,
+                    page: "1",
+                    page_size: this.proxyListSize,
+                },
+                headers: {
+                    Authorization: `Token ${process.env.PROXY_AUTH_TOKEN}`
+                }
+            })
+
+            this.proxyList = await res.data.results
+            console.Info("PROXY_LIST", this.proxyList)
+        } catch(err){
+            console.error("An error occurred whie fetching proxy list!")
+            throw err
+        }
+    }
+
+    async sessionProxy(){
+        /**
+         * Returns the current session proxy. If thecurrent proxy
+         * has expiried then one is picked at random from
+         * the SessionProxyManager's ProxyList.
+         * 
+         * @return  {Object}  The current session proxy
+         */
+        if(this.proxyList.length === 0) await this.fetchProxyList();
+
+        if(!this.currentProxy || (Date.now() - this.lastAssignedTime) > this.sessionDuration){
+            const randomProxyListIndex = (0 + this.proxyList.length + Math.floor(Math.random() * 10)) % this.proxyList.length
+            this.currentProxy = this.proxyList[randomProxyListIndex]
+            this.lastAssignedTime = Date.now()
+            this.isFresh = true
+            console.log(`Session proxy obtained! Activate session proxy id => ${this.currentProxy.id}`)
+        }
+        return this.currentProxy
+    }
+}
+
+module.exports = { SessionProxyManager }
