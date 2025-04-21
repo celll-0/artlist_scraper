@@ -1,6 +1,7 @@
-const { chromium } = require('playwright-extra');
-const stealth = require('puppeteer-extra-plugin-stealth')
+const { Builder } = require('selenium-webdriver')
+const chrome = require('selenium-webdriver/chrome')
 const axios = require('axios')
+const path = require('node:path')
 
 const { SessionProxyManager } = require("./proxy.js")
 
@@ -24,55 +25,34 @@ const getNetResourceActivity = async (url) => {
     const sessionProxyManager = new SessionProxyManager({ mode: "direct", sessionDuration: 60000})
     const proxy = await sessionProxyManager.sessionProxy()
  
-    const browserConfig = {
-        deviceScaleFactor: 1,
-        userAgent: userAgents[(0 + userAgents.length + Math.random()) % userAgents.length],
-        viewport: { width: 1920, height: 1080 },
-        headless: true,
-        timeout: 40000,
-    }
+    const chromeDriverPath = path.resolve(__dirname, 'undetected_chromedriver.exe');
+    const chromeExePath = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 
-    chromium.use(stealth)
-    const browser = await chromium.launch(browserConfig)
-    const context = await browser.newContext()
-    const page = await context.newPage()
+    const chromeOptions = new chrome.Options();
+    chromeOptions.setChromeBinaryPath(chromeExePath)
+    chromeOptions.addArguments('')
 
-    // const resourceId = url.split("/").at(-1)
+    const driver = new Builder()
+        .forBrowser('chrome')
+        .setChromeOptions(chromeOptions)
+        .setChromeOptions()
+        .setChromeService(new chrome.ServiceBuilder(chromeDriverPath))
+        .build();
+
+    const resourceId = url.split("/").at(-1)
 
     try {
         const proxyDetails = await sessionProxyManager.inspectProxy(proxy)
-    //     page.on('response', response => {
-    //         if(response.url().includes(resourceId)){
-    //             activity.push(
-    //                 {
-    //                     request: {
-    //                         method: response.request().method(),
-    //                         url: response.request().url()
-    //                     },
-    //                     response: {
-    //                         status: response.status(),
-    //                         url: response.url(),
-    //                     }
-    //                 }
-    //             )
-    //         }
-    //     })
-        // await page.goto(url, {waitUntil: "networkidle"})
+        await driver.get(url)
 
-        // // await page.evaluate(() => window.scrollBy(0, window.innerHeight));
-        // // await page.mouse.move(Math.random()*100, Math.random()*120)
-        // await new Promise(resolve => setTimeout(resolve, Math.floor(Math.random() * 4000 + 3000)));
-        
-        // await page.screenshot({path: "bfingerprints.png", fullPage: true})
+        const pageSource = driver.getPageSource()
 
-
-        // return { activity }
-        return { proxy, proxyDetails }
+        return { pageSource }
     } catch(err){
         console.error('An error occurred while scraping the site')
         throw err
     } finally {
-        await browser.close()
+        await driver.quit()
     }
 }
 

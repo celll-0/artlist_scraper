@@ -20,9 +20,11 @@ const resourceController = async (req, res) => {
 
 const validResourceURL = (url) => {
     const acceptedResourcePaths = ["stock-footage/clip", "pixelscan", "httpbin"]
+    const acceptProtocols = ['https://']
 
     for(i=0; i < acceptedResourcePaths.length; i++){
         const match = url.includes(acceptedResourcePaths[i])
+        const validProtocol = url.includes(acceptProtocols[0])
         if(match){
             return url
         }
