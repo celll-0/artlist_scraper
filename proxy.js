@@ -51,7 +51,11 @@ class SessionProxyManager {
             })
 
             this.proxyList = await res.data.results
-            console.info("PROXY_LIST", this.proxyList)
+
+            for(const proxy in this.proxyList){
+                const { id, proxy_address, port, country_code, valid,...otherProxyDetails } = proxy
+                console.log({ id, proxy_address, port, country_code, valid })
+            }
         } catch(err){
             console.error("An error occurred whie fetching proxy list!")
             throw err
