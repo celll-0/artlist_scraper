@@ -1,11 +1,8 @@
-const { Builder, until, By, Capabilities } = require('selenium-webdriver')
+const { Builder, until, By } = require('selenium-webdriver')
 const chrome = require('selenium-webdriver/chrome')
-const seleniumProxy = require('selenium-webdriver/proxy');
-const { Preferences } = require('selenium-webdriver/lib/logging.js');
 const path = require('node:path')
-
 const { SessionProxyManager } = require("./proxy.js");
-const { type } = require('node:os');
+
 
 const userAgents = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
@@ -21,7 +18,44 @@ const userAgents = [
     "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/122.0.0.0 Mobile/15E148 Safari/604.1"
 ]
 
+
 const getNetResourceActivity = async (url) => {
+    const driver = buildDriver()
+    const videoElemSelector = 'video'
+
+    try {
+        await driver.get(url)
+
+        console.log("Awaiting video Element load...")
+        await driver.wait(until.elementLocated(By.css(videoElemSelector)), 6000)
+        console.log("Video Element loaded!")
+
+        const networkData = await driver.manage().logs().get("performance")
+        const sentRequests = networkData.filter((transaction) => {
+            const transactionData = JSON.parse(transaction.message)
+            return transactionData.message.method === 'Network.requestWillBeSent' ? true : false;
+        })
+        
+        const networkActivity = []
+        for(const Obj of sentRequests){
+            const transactionData = JSON.parse(Obj.message)
+            const { message: { params: { request, requestId }}} = transactionData
+            if(request.url.includes('.m3u8')){
+                networkActivity.push({ requestId, request })
+            }
+        }
+
+        return { networkActivity }
+    } catch(err){
+        console.error('An error occurred while scraping the site')
+        throw err
+    } finally {
+        await driver.quit()
+    }
+}
+
+
+const buildDriver = async () => {
     const sessionProxyManager = new SessionProxyManager({ mode: "direct", sessionDuration: 60000})
     const proxy = await sessionProxyManager.sessionProxy()
  
@@ -30,8 +64,8 @@ const getNetResourceActivity = async (url) => {
 
     const chromeOptions = new chrome.Options();
     chromeOptions.setChromeBinaryPath(chromeExePath)
-    chromeOptions.setLoggingPrefs({'performace': "ALL"})
-    // chromeOptions.setPerfLoggingPrefs({enableNetwork: true})
+    chromeOptions.setLoggingPrefs({'performance': "ALL"})
+    chromeOptions.setPerfLoggingPrefs({enableNetwork: true})
 
     console.log(chromeOptions.map_)
     console.log()
@@ -44,29 +78,8 @@ const getNetResourceActivity = async (url) => {
         .setChromeService(new chrome.ServiceBuilder(chromeDriverPath))
         .build();
 
-    console.log(driver.manage().logs().get("PERFORMANCE"))
-
-    try {
-        await driver.get(url)
-
-        console.log("Awaiting video Element load...")
-        const videoCssSelector = By.css('video')
-        await driver.wait(until.elementLocated(videoCssSelector), 30000)
-        console.log("Video Element loaded!")
-
-        console.log(await driver.getCapabilities())
-        
-
-        // const video = await driver.findElement(videoCssSelector)
-        // const thumbnail = await video.getAttribute("poster")
-
-        // return { thumbnail }
-    } catch(err){
-        console.error('An error occurred while scraping the site')
-        throw err
-    } finally {
-        await driver.quit()
-    }
+    return driver
 }
+
 
 module.exports = { getNetResourceActivity }
