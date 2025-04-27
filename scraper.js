@@ -20,16 +20,11 @@ const userAgents = [
 
 
 const getNetResourceActivity = async (url) => {
-    const driver = buildDriver()
-    const videoElemSelector = 'video'
-
+    const driver = await buildDriver()
     try {
         await driver.get(url)
-
-        console.log("Awaiting video Element load...")
-        await driver.wait(until.elementLocated(By.css(videoElemSelector)), 6000)
-        console.log("Video Element loaded!")
-
+        
+        awaitVideoAndM3u8Files()
         const networkData = await driver.manage().logs().get("performance")
         const sentRequests = networkData.filter((transaction) => {
             const transactionData = JSON.parse(transaction.message)
@@ -50,8 +45,21 @@ const getNetResourceActivity = async (url) => {
         console.error('An error occurred while scraping the site')
         throw err
     } finally {
-        await driver.quit()
+        // await driver.quit()
     }
+}
+
+const awaitVideoAndM3u8Files = async (driver) => {
+    const videoElemSelector = 'video'
+    console.log("Awaiting video files...")
+    await driver.wait(until.elementLocated(By.css(videoElemSelector)), 6000)
+    console.log("Video Element loaded!")
+
+    const videoElem = driver.executeScript(`return document.querySelector('${videoElemSelector}')`)
+    const isPlaying = async () => await driver.executeScript(`
+        return arguments[0].currentTime > 0 && !arguments[0].paused && !arguments[0].ended
+    `, videoElem)
+    await driver.wait(isPlaying, 6000)
 }
 
 
@@ -67,8 +75,7 @@ const buildDriver = async () => {
     chromeOptions.setLoggingPrefs({'performance': "ALL"})
     chromeOptions.setPerfLoggingPrefs({enableNetwork: true})
 
-    console.log(chromeOptions.map_)
-    console.log()
+    console.log({chromeOptions: chromeOptions.map_})
 
     const driver = new Builder()
         .forBrowser('chrome')
