@@ -9,7 +9,6 @@ const resourceController = async (req, res) => {
         } else {
             res.status(400).json({ error: { msg: "Invalid resource URL", err: new TypeError("Invalid ")}})
         }
-
         res.json(result)
     } catch(err){
         console.error(err)

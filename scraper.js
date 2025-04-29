@@ -2,6 +2,8 @@ const { Builder, until, By } = require('selenium-webdriver')
 const chrome = require('selenium-webdriver/chrome')
 const path = require('node:path')
 const { SessionProxyManager } = require("./proxy.js");
+const axios = require('axios')
+const fs = require('fs')
 
 
 const userAgents = [
@@ -19,14 +21,14 @@ const userAgents = [
 ]
 
 
-const getNetResourceActivity = async (url) => {
+async function getNetResourceActivity(url){
     const driver = await buildDriver()
     try {
         await driver.get(url)
         
-        awaitVideoAndM3u8Files()
-        const networkData = await driver.manage().logs().get("performance")
-        const sentRequests = networkData.filter((transaction) => {
+        awaitVideoAndM3u8Files(driver)
+        const networkLogs = await driver.manage().logs().get("performance")
+        const sentRequests = networkLogs.filter((transaction) => {
             const transactionData = JSON.parse(transaction.message)
             return transactionData.message.method === 'Network.requestWillBeSent' ? true : false;
         })
@@ -49,7 +51,7 @@ const getNetResourceActivity = async (url) => {
     }
 }
 
-const awaitVideoAndM3u8Files = async (driver) => {
+async function awaitVideoAndM3u8Files(driver){
     const videoElemSelector = 'video'
     console.log("Awaiting video files...")
     await driver.wait(until.elementLocated(By.css(videoElemSelector)), 6000)
@@ -63,7 +65,7 @@ const awaitVideoAndM3u8Files = async (driver) => {
 }
 
 
-const buildDriver = async () => {
+async function buildDriver(){
     const sessionProxyManager = new SessionProxyManager({ mode: "direct", sessionDuration: 60000})
     const proxy = await sessionProxyManager.sessionProxy()
  
@@ -88,5 +90,26 @@ const buildDriver = async () => {
     return driver
 }
 
+async function getM3u8(url){
+    if(!url.includes('.m3u8')){
+        throw new TypeError('The resource must be a m3u8 with the file extension ".m3u8"')
+    }
 
-module.exports = { getNetResourceActivity }
+    const chunks = []
+    const m3u8 = new Promise(async (resolve, reject) => {
+        try {
+            const {data: stream} = await axios.get( url, { method: 'get', responseType: 'stream' })
+            stream.on('data', (data) => chunks.push(data))
+            stream.on('close', () => {
+                const m3u8ASCII = Buffer.concat(chunks).toString('utf-8')
+                resolve(m3u8ASCII)
+            })
+            stream.on('error', (error) => {throw error})
+        } catch(err){
+            console.error('An error occured while fetching m3u8 files!')
+            reject(err)
+        }
+    })
+    return m3u8    
+}
+module.exports = { getNetResourceActivity, getM3u8 }
