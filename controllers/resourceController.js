@@ -1,11 +1,14 @@
-const { getNetResourceActivity } = require("../scraper.js")
+const { getNetResourceActivity, getM3u8 } = require("../scraper.js")
+const { M3u8Parser } = require('../m3u8.js')
 
 const resourceController = async (req, res) => {
     const url = req.body.resource
 
     try {
         if(validResourceURL(url)){
-            var result = await getNetResourceActivity(url)
+            // var result = await getNetResourceActivity(url)
+            var m3u8Str = await getM3u8('https://cms-public-artifacts.artlist.io/content/artgrid/footage-hls/4b54378d-f3c6-4365-b965-7d659f0095ee_playlist_1709719789.m3u8')
+            var result = new M3u8Parser.getDirectives(m3u8Str)
         } else {
             res.status(400).json({ error: { msg: "Invalid resource URL", err: new TypeError("Invalid ")}})
         }
