@@ -1,3 +1,5 @@
+const { logger } = require('./logger.js')
+
 const M3U8_SIGNITURE = '#EXTM3U'
 
 // M3u8 directives that classify the desired information
@@ -15,7 +17,7 @@ const DIRECTIVE_PARAMS = {
     bandwidth: 'BANDWIDTH'
 }
 
-const IsDirectiveLine = (line) => IsDirectiveLine(line)
+const IsDirectiveLine = (line) => line.startsWith('#')
 
 class M3u8Parser {
 
@@ -27,7 +29,7 @@ class M3u8Parser {
         try {
 
         } catch(err){
-            console.log('An error occurred while parsing the m3u8')
+            logger.info('An error occurred while parsing the m3u8')
             throw err
         }
     }
@@ -40,35 +42,42 @@ class M3u8Parser {
         if(!m3u8.includes('.m3u8')){
             throw new TypeError('File provided must be the m3u8 Playlist')
         }
+        const lines = m3u8.split('\n').filter(x => x).map(x => x.trim())
 
-        var lines = m3u8.split('\n').filter(x => x)
-        console.log(typeof lines)
-        const directives = this._getDirectives(lines)
-
-        for(i=0; i < lines.length; i++){
-            if(IsDirectiveLine(lines[i])){
-                var playlists = this._bagAndTagResourcePaths({idx: i, lines, directives})
+        try{
+            const directives = this._getDirectives(lines)
+            const playlists = []
+            logger.info('logger test')
+            for(let i=0; i < lines.length; i++){
+                if(IsDirectiveLine(lines[i])){
+                    playlists.push(this._bagAndTagResourcePaths({idx: i, lines, directives}))
+                }
             }
+            return playlists
+        } catch(err){
+            logger.error('An error occurred while unpacking playlist data', err)
+            throw err
         }
-        return playlists
     }
 
     static _bagAndTagResourcePaths({idx, lines, directives}){
-        const directiveName = _directiveOf(lines[idx])
+        const directiveName = this._directiveOf(lines[idx])
+        const playlist = {}
         switch(directiveName){
             case DIRECTIVES.STREAM_INFO:
-                const playlists = {}
                 const match = directives.find((directive) => directive.line === lines[idx])
-
                 if(match){
                     const resourcePath = lines[idx+1]
+                    logger.info(match)
                     if(resourcePath.includes('.m3u8')){
-                        playlists[match.value[DIRECTIVES.resolution.height]] = resourcePath
+                        playlist[match.value[DIRECTIVES.resolution.height]] = resourcePath
                     } else if(IsDirectiveLine(resourcePath)){
                         throw new Error(`Missing Resource Path: m3u8 file is missing a resource path, ${DIRECTIVES.STREAM_INFO} tag must be followed by a resource.`)
                     } else {
                         throw new Error('Invalid M3u8: m3u8 file may be formatted incorrectly.')
                     }
+                } else {
+                    throw new Error(`Directive Mismatch: Unable to find line '${lines[idx]}'`)
                 }
                 break
 
@@ -77,8 +86,7 @@ class M3u8Parser {
                 // features, e.g. floating point durations for playback.
                 break
         }
-
-        return expectPlaylists
+        return playlist
     }
 
     /**
@@ -88,18 +96,23 @@ class M3u8Parser {
      * @returns {Array}         An Array of directives.
      */
     static _getDirectives(lines){
-        if(typeof m3u8 !== 'array'){
-            throw new TypeError(`Expected an Array type input. Given type '${typeof m3u8}'.`)
+        if(!Array.isArray(lines)){
+            throw new TypeError(`Expected an Array type input. Given type '${typeof lines}'.`)
         }
-        
-        lines = lines.filter(line => IsDirectiveLine(line) && !M3U8_SIGNITURE)
-        const directives = []
-        for(const line in lines){
-            const directive = this._directiveOf(line)
-            const value = directive === DIRECTIVES.STREAM_INFO ? this._getParams(line, DIRECTIVES.STREAM_INFO) : this._valueOf(line);
-            directives.push({directive, value, line})
+
+        try {
+            lines = lines.filter(line => IsDirectiveLine(line) && line !== M3U8_SIGNITURE)
+            const directives = []
+            for(const line of lines){
+                const directive = this._directiveOf(line)
+                const value = directive === DIRECTIVES.STREAM_INFO ? this._getParams(line, DIRECTIVES.STREAM_INFO) : this._valueOf(line);
+                directives.push({directive, value, line})
+            }
+            return directives
+        } catch(err){
+            logger.error('An error occured while parsing M3u8 directives')
+            throw err
         }
-        return directives
     }
 
     /**
@@ -176,23 +189,5 @@ class M3u8Parser {
         return value
     }
 }
-
-const file = `
-#EXTM3U
-#EXT-X-VERSION:3
-#EXT-X-STREAM-INF:BANDWIDTH=400000,RESOLUTION=426x240
-97703_240p.m3u8
-#EXT-X-STREAM-INF:BANDWIDTH=800000,RESOLUTION=640x360
-97703_360p.m3u8
-#EXT-X-STREAM-INF:BANDWIDTH=1400000,RESOLUTION=842x480
-97703_480p.m3u8
-#EXT-X-STREAM-INF:BANDWIDTH=2800000,RESOLUTION=1280x720
-97703_720p.m3u8
-#EXT-X-STREAM-INF:BANDWIDTH=5000000,RESOLUTION=1920x1080
-97703_1080p.m3u8
-#EXT-X-STREAM-INF:BANDWIDTH=10000000,RESOLUTION=3840x2160
-97703_2160p.m3u8`
-
-console.log(M3u8Parser.playlists(file, DIRECTIVES.STREAM_INFO))
 
 module.exports = { M3u8Parser }
