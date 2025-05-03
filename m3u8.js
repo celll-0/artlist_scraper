@@ -12,7 +12,7 @@ const DIRECTIVES = {
     ENDLIST: 'EXT-X-ENDLIST'
 }
 
-const DIRECTIVE_PARAMS = {
+const PLAYLIST_DIRECTIVE_PARAMS = {
     resolution: 'RESOLUTION',
     bandwidth: 'BANDWIDTH'
 }
@@ -46,16 +46,16 @@ class M3u8Parser {
 
         try{
             const directives = this._getDirectives(lines)
-            const playlists = []
-            logger.info('logger test')
+            const playlists = {}
+
             for(let i=0; i < lines.length; i++){
                 if(IsDirectiveLine(lines[i])){
-                    playlists.push(this._bagAndTagResourcePaths({idx: i, lines, directives}))
+                    Object.assign(playlists, this._bagAndTagResourcePaths({idx: i, lines, directives}))
                 }
             }
             return playlists
         } catch(err){
-            logger.error('An error occurred while unpacking playlist data', err)
+            logger.error('An error occurred while unpacking resource paths', err)
             throw err
         }
     }
@@ -63,14 +63,15 @@ class M3u8Parser {
     static _bagAndTagResourcePaths({idx, lines, directives}){
         const directiveName = this._directiveOf(lines[idx])
         const playlist = {}
+
         switch(directiveName){
             case DIRECTIVES.STREAM_INFO:
                 const match = directives.find((directive) => directive.line === lines[idx])
+
                 if(match){
                     const resourcePath = lines[idx+1]
-                    logger.info(match)
                     if(resourcePath.includes('.m3u8')){
-                        playlist[match.value[DIRECTIVES.resolution.height]] = resourcePath
+                        playlist[match.value[PLAYLIST_DIRECTIVE_PARAMS.resolution].height] = resourcePath
                     } else if(IsDirectiveLine(resourcePath)){
                         throw new Error(`Missing Resource Path: m3u8 file is missing a resource path, ${DIRECTIVES.STREAM_INFO} tag must be followed by a resource.`)
                     } else {
@@ -161,9 +162,9 @@ class M3u8Parser {
             const kv = this._valueOf(line).split(',').map((kvString) => kvString.split('='))
             const params = Object.fromEntries(new Map(kv))
             
-            if(params[DIRECTIVE_PARAMS.resolution]){
-                const res = params[DIRECTIVE_PARAMS.resolution].split('x')
-                params[DIRECTIVE_PARAMS.resolution] = {height: res[1], width: res[0]}
+            if(params[PLAYLIST_DIRECTIVE_PARAMS.resolution]){
+                const res = params[PLAYLIST_DIRECTIVE_PARAMS.resolution].split('x')
+                params[PLAYLIST_DIRECTIVE_PARAMS.resolution] = {height: res[1], width: res[0]}
             }
             return params
         }
@@ -190,4 +191,4 @@ class M3u8Parser {
     }
 }
 
-module.exports = { M3u8Parser }
+module.exports = { M3u8Parser, DIRECTIVES }

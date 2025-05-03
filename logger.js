@@ -8,14 +8,12 @@ const { createLogger, format, config, transports } = require('winston')
 */
 
 const logger = createLogger({
-    level: config.syslog.levels,
     format: format.combine(
         format.colorize(),
         format.simple(),
-        format.errors({stack: true})
     ),
     transports: [
-        new transports.Console()
+        new transports.Console({ format: format.errors({stack: true})})
     ],
 })
 

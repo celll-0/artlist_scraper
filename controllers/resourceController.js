@@ -1,8 +1,8 @@
-const { getNetResourceActivity, getM3u8 } = require("../scraper.js")
-const { M3u8Parser } = require('../m3u8.js')
+const { catchResourceNetActivity, fetchResourcePlaylist, IsM3u8Playlist } = require("../scraper.js")
+const { M3u8Parser, DIRECTIVES } = require('../m3u8.js')
 const { logger } = require('../logger.js')
-
-const resourceController = async (req, res) => {
+ 
+const resourcePlaylistsController = async (req, res) => {
     const url = req.body.resource
 
     try {
@@ -10,10 +10,15 @@ const resourceController = async (req, res) => {
             res.status(400).json({ error: new TypeError("Invalid resource URL").message })
         }
 
-        // var result = await getNetResourceActivity(url)
-        var m3u8Str = await getM3u8('https://cms-public-artifacts.artlist.io/content/artgrid/footage-hls/4b54378d-f3c6-4365-b965-7d659f0095ee_playlist_1709719789.m3u8')
-        var result = M3u8Parser._getDirectives(m3u8Str)
-        res.json(result)
+        const activity = await catchResourceNetActivity(url)
+        if(activity.length >= 1){
+            const resource = activity.find((transaction) => IsM3u8Playlist(transaction.request.url))
+            var resourceUrl = resource.request.url
+        }
+
+        const m3u8Str = await fetchResourcePlaylist(resourceUrl)
+        const resolutions = M3u8Parser.playlists(m3u8Str, DIRECTIVES.STREAM_INFO)
+        res.status(200).json(resolutions)
     } catch(err){
         logger.error('ResourceController Error: ', err)
         res.status(500).json({ error: err.message })
@@ -68,4 +73,4 @@ const validResourceURL = (url) => {
     return false
 }
 
-module.exports = { resourceController, cTest }
+module.exports = { resourcePlaylistsController, cTest }
