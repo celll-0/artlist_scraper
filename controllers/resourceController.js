@@ -1,4 +1,4 @@
-const { catchResourceNetActivity, fetchResourcePlaylist, IsM3u8Playlist } = require("../scraper.js")
+const { catchResourceNetActivity, fetchFromResourceServer, IsM3u8Playlist } = require("../scraper.js")
 const { M3u8Parser, DIRECTIVES } = require('../m3u8.js')
 const { logger } = require('../logger.js')
  
@@ -13,10 +13,12 @@ const resourcePlaylistsController = async (req, res) => {
         const activity = await catchResourceNetActivity(url)
         if(activity.length >= 1){
             const resource = activity.find((transaction) => IsM3u8Playlist(transaction.request.url))
-            var resourceUrl = resource.request.url
+            var resourceName = resource.request.url.split('/').toReversed()[0]
+        } else {
+            throw new Error('Failed to located resource playlist! Resource either does not exist or search criteria is incorrect.')
         }
 
-        const m3u8Str = await fetchResourcePlaylist(resourceUrl)
+        const m3u8Str = await fetchFromResourceServer(resourceName)
         const resolutions = M3u8Parser.playlists(m3u8Str, DIRECTIVES.STREAM_INFO)
         res.status(200).json(resolutions)
     } catch(err){

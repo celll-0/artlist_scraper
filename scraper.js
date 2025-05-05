@@ -3,7 +3,8 @@ const chrome = require('selenium-webdriver/chrome')
 const path = require('node:path')
 const { SessionProxyManager } = require("./proxy.js");
 const axios = require('axios')
-const logger = require('winston')
+const logger = require('winston');
+const config = require('./config.js');
 
 
 const IsM3u8Playlist = (url) => url.includes('.m3u8') && url.includes('playlist')
@@ -30,17 +31,13 @@ async function catchResourceNetActivity(url){
                 networkActivity.push({ requestId, request })
             }
         }
-        
-        if(networkActivity.length === 0){
-            throw new Error('Failed to located resource playlist! Resource either does not exist or search criteria is incorrect.')
-        }
 
         return networkActivity
     } catch(err){
         logger.error('An error occurred while scraping the site')
         throw err
     } finally {
-        // await driver.quit()
+        await driver.quit()
     }
 }
 
@@ -87,15 +84,16 @@ async function buildDriver(){
     return driver
 }
 
-async function fetchResourcePlaylist(url){
-    console.info(url)
-    if(!url.includes('.m3u8')){
-        throw new TypeError('The resource must be a m3u8 with the file extension ".m3u8"')
+async function fetchFromResourceServer(resourceName){
+    const resourceFileExtension = resourceName.split('.').toReversed()[0]
+    if(!config.resources.fileTypes.includes(resourceFileExtension)){
+        throw new TypeError('The resource file is not of an accepted type')
     }
 
-    const chunks = []
-    const m3u8 = new Promise(async (resolve, reject) => {
+    const url = config.resources.resourceServerUrl + resourceName
+    const resource = new Promise(async (resolve, reject) => {
         try {
+            const chunks = []
             const {data: stream} = await axios.get( url, { method: 'get', responseType: 'stream' })
             stream.on('data', (data) => chunks.push(data))
             stream.on('close', () => {
@@ -108,6 +106,7 @@ async function fetchResourcePlaylist(url){
             reject(err)
         }
     })
-    return m3u8    
+    return resource    
 }
-module.exports = { catchResourceNetActivity, fetchResourcePlaylist, IsM3u8Playlist }
+
+module.exports = { catchResourceNetActivity, fetchFromResourceServer, IsM3u8Playlist }
