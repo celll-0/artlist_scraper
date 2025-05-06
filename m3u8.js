@@ -70,7 +70,7 @@ class M3u8Parser {
 
                     const directive = this._directiveOf(lines[j])
                     const key = Object.entries(DIRECTIVES).find((dir) => dir[1] === directive)[0].toLowerCase()
-                    
+
                     if(Object.values(DIRECTIVES).includes(directive)){
                         if(IsSequenceDirective(directive)){
                             sequence[key] = this._valueOf(lines[j])
@@ -82,7 +82,6 @@ class M3u8Parser {
 
                 sequence.segments.push(segment)
             }
-            // get all directive preceeding each URI until an inapplicable sequence directive is reached
             return sequence
         } catch(err){
             logger.error('M3u8Parser Error: Failed to parse m3u8 sequence file.', err)
