@@ -1,12 +1,14 @@
 const { catchResourceNetActivity, fetchFromResourceServer, IsM3u8Playlist } = require("../scraper.js")
-const { M3u8Parser, DIRECTIVES } = require('../m3u8.js')
+const { M3u8Parser, MASTER_DIRECTIVES } = require('../m3u8.js')
 const { logger } = require('../logger.js')
+const { validResourceURL } = require('../utils.js')
  
-const resourcePlaylistsController = async (req, res) => {
+const footageResourceController = async (req, res) => {
     const url = req.body.resource
+    const resolution = '1080'
 
     try {
-        if(!validResourceURL(url)){
+        if(!validResourceURL(url, {acceptType: 'footage'})){
             res.status(400).json({ error: new TypeError("Invalid resource URL").message })
         }
 
@@ -18,32 +20,34 @@ const resourcePlaylistsController = async (req, res) => {
             throw new Error('Failed to located resource playlist! Resource either does not exist or search criteria is incorrect.')
         }
 
-        const m3u8Str = await fetchFromResourceServer(resourceName)
-        const resolutions = M3u8Parser.playlists(m3u8Str, DIRECTIVES.STREAM_INFO)
-        res.status(200).json(resolutions)
+        const masterM3u8Str = await fetchFromResourceServer(resourceName)
+        const masterPlaylist = M3u8Parser.master(masterM3u8Str, MASTER_DIRECTIVES.STREAM_INFO)
+
+        const sequenceM3u8Str = await fetchFromResourceServer(masterPlaylist[resolution])
+        const sequence = M3u8Parser.segments(sequenceM3u8Str)
+
+        res.status(200).json(sequence)
     } catch(err){
         logger.error('ResourceController Error: ', err)
         res.status(500).json({ error: err.message })
     }
 }
 
+
+
 const cTest = (req, res) => {
     try {
         const file = `
             #EXTM3U
             #EXT-X-VERSION:3
-            #EXT-X-STREAM-INF:BANDWIDTH=400000,RESOLUTION=426x240
-            97703_240p.m3u8
-            #EXT-X-STREAM-INF:BANDWIDTH=800000,RESOLUTION=640x360
-            97703_360p.m3u8
-            #EXT-X-STREAM-INF:BANDWIDTH=1400000,RESOLUTION=842x480
-            97703_480p.m3u8
-            #EXT-X-STREAM-INF:BANDWIDTH=2800000,RESOLUTION=1280x720
-            97703_720p.m3u8
-            #EXT-X-STREAM-INF:BANDWIDTH=5000000,RESOLUTION=1920x1080
-            97703_1080p.m3u8
-            #EXT-X-STREAM-INF:BANDWIDTH=10000000,RESOLUTION=3840x2160
-            97703_2160p.m3u8`
+            #EXT-X-TARGETDURATION:6
+            #EXT-X-MEDIA-SEQUENCE:0
+            #EXT-X-PLAYLIST-TYPE:VOD
+            #EXTINF:5.760000,
+            4b54378d-f3c6-4365-b965-7d659f0095ee_2160p_000_1709719789.ts
+            #EXTINF:1.200000,
+            4b54378d-f3c6-4365-b965-7d659f0095ee_2160p_001_1709719789.ts
+            #EXT-X-ENDLIST`
 
         const result = M3u8Parser.playlists(file, 'EXT-X-STREAM-INF')
         res.json(result)
@@ -54,25 +58,4 @@ const cTest = (req, res) => {
 }
 
 
-const validResourceURL = (url) => {
-    const acceptedResourcePaths = ["stock-footage/clip", "pixelscan", "httpbin", "johnpyeauctions"]
-    const acceptProtocols = ['https://']
-
-    for(i=0; i < acceptedResourcePaths.length; i++){
-        const match = url.includes(acceptedResourcePaths[i])
-        const validProtocol = url.includes(acceptProtocols[0])
-        if(match){
-            if(url.startsWith("www")){
-                logger.warn("Protocol speciification is missing from resource URL! Protocol defaults to 'https'.")
-            } else if(!validProtocol){
-                throw new TypeError("Invalid protocol! Protocol must be 'https'.")
-            }
-
-            return url
-        }
-    }
-
-    return false
-}
-
-module.exports = { resourcePlaylistsController, cTest }
+module.exports = { footageResourceController, cTest }

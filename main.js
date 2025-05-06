@@ -1,14 +1,14 @@
 require('dotenv').config()
 const express = require('express')
 
-const { resourcePlaylistsController, cTest } = require('./controllers/resourceController.js')
+const { footageResourceController, cTest } = require('./controllers/resourceController.js')
 
 const app = express()
 const port = 8000
 
 app.use(express.json())
 
-app.post('/', resourcePlaylistsController)
+app.post('/footage', footageResourceController)
 
 app.get('/test', cTest)
 

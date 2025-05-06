@@ -86,7 +86,7 @@ async function buildDriver(){
 
 async function fetchFromResourceServer(resourceName){
     const resourceFileExtension = resourceName.split('.').toReversed()[0]
-    if(!config.resources.fileTypes.includes(resourceFileExtension)){
+    if(!config.resources.acceptFileTypes.includes(resourceFileExtension)){
         throw new TypeError('The resource file is not of an accepted type')
     }
 

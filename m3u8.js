@@ -1,79 +1,136 @@
 const { logger } = require('./logger.js')
+const config = require('./config.js')
 
-const M3U8_SIGNITURE = '#EXTM3U'
+const M3U8_IDENTIFIER = '#EXTM3U'
 
-// M3u8 directives that classify the desired information
-const DIRECTIVES = {
+// Master Playlist directives
+const MASTER_DIRECTIVES = {
     VERSION: 'EXT-X-VERSION',
     STREAM_INFO: 'EXT-X-STREAM-INF',
-    MEDIA_SEQUENCE: 'EXT-X-MEDIA-SEQUENCE',
-    DURATION: 'EXT-X-TARGETDURATION',
-    PLAYLIST_TYPE: 'EXT-X-PLAYLIST-TYPE',
-    ENDLIST: 'EXT-X-ENDLIST'
 }
 
-const PLAYLIST_DIRECTIVE_PARAMS = {
+// Other Playlist directives
+const DIRECTIVES = {
+    // Sequence Directives
+    ENDLIST: 'EXT-X-ENDLIST',
+    SEQUENCE_NUMBER: 'EXT-X-MEDIA-SEQUENCE',
+    SEQUENCE_DURATION: 'EXT-X-TARGETDURATION',
+    PLAYLIST_TYPE: 'EXT-X-PLAYLIST-TYPE',
+
+    // Segment Directives
+    SEGMENT_DURATION: 'EXTINF',
+    BYTERANGE: 'EXT-X-BYTERANGE',
+    KEY: 'EXT-X-KEY',
+    MAP: 'EXT-X-MAP',
+    PROGRAM_DATE_TIME: 'EXT-X-PROGRAM-DATE-TIME',
+    DATERANGE: 'EXT-X-DATERANGE',
+}
+
+// Attribute names for all playlist directives
+const MASTER_DIRECTIVE_ATTRS = {
     resolution: 'RESOLUTION',
     bandwidth: 'BANDWIDTH'
 }
 
-const IsDirectiveLine = (line) => line.startsWith('#')
+
+const IsValidM3u8 = (m3u8) => m3u8.startsWith(M3U8_IDENTIFIER)
+const IsM3u8Master = (m3u8) => IsValidM3u8(m3u8) && m3u8.includes(MASTER_DIRECTIVES.STREAM_INFO) && m3u8.includes('m3u8')
+const IsM3u8Sequence = (m3u8) => IsValidM3u8(m3u8) && m3u8.includes(MASTER_DIRECTIVES.SEQUENCE_DURATION) && m3u8.includes(MASTER_DIRECTIVES.SEGMENT_DURATION)
+const IsDirectiveLine = (line) => line.startsWith('#EXT')
+const IsSequenceDirective = (dir) => dir === DIRECTIVES.SEQUENCE_DURATION || dir === DIRECTIVES.SEQUENCE_NUMBER || dir === DIRECTIVES.PLAYLIST_TYPE || dir === DIRECTIVES.ENDLIST
+
 
 class M3u8Parser {
 
-    parse(m3u8){
-        if(!m3u8.include(M3U8_SIGNITURE)){
-            throw new TypeError('Invalid m3u8! File is not a valid m3u8 file or does not have the correct signiture.')
-        }
-
-        try {
-
-        } catch(err){
-            logger.info('An error occurred while parsing the m3u8')
-            throw err
-        }
-    }
-
-    static playlists(m3u8){
+    static segments(m3u8){
         if(typeof m3u8 !== 'string'){
             throw new TypeError(`M3u8 must be a string. Given type '${typeof m3u8}'.`)
         }
 
-        if(!m3u8.includes('.m3u8')){
-            throw new TypeError('File provided must be the m3u8 Playlist')
+        if(!IsM3u8Sequence){
+            throw new TypeError('Not a valid m3u8 sequence playlist file')
         }
+
+        const lines = m3u8.split('\n').filter(x => x).map(x => x.trim())
+
+        try{
+            const URIs = this._getURIs(lines, 'media')
+            const sequence = { segments: [] }
+            for(let i=0; i < URIs.length; i++){
+                const idxOfURI = lines.indexOf(URIs[i])
+                const segment = {}
+                segment.uri = URIs[i]
+
+                for(let j=idxOfURI-1; j >= 0; j--){
+                    // Break if line is not a directive
+                    if(!IsDirectiveLine(lines[j])) break;
+
+                    // Break if line is either the M3u8 identifier or M3u8 version directive
+                    if(lines[j].includes(M3U8_IDENTIFIER) || lines[j].includes(MASTER_DIRECTIVES.VERSION)) break;
+
+                    const directive = this._directiveOf(lines[j])
+                    const key = Object.entries(DIRECTIVES).find((dir) => dir[1] === directive)[0].toLowerCase()
+                    
+                    if(Object.values(DIRECTIVES).includes(directive)){
+                        if(IsSequenceDirective(directive)){
+                            sequence[key] = this._valueOf(lines[j])
+                        } else {
+                            segment[key] = this._valueOf(lines[j])
+                        }
+                    }
+                }
+
+                sequence.segments.push(segment)
+            }
+            // get all directive preceeding each URI until an inapplicable sequence directive is reached
+            return sequence
+        } catch(err){
+            logger.error('M3u8Parser Error: Failed to parse m3u8 sequence file.', err)
+            throw err
+        }
+    }
+
+    static master(m3u8){
+        if(typeof m3u8 !== 'string'){
+            throw new TypeError(`M3u8 must be a string. Given type '${typeof m3u8}'.`)
+        }
+
+        if(!IsM3u8Master){
+            throw new TypeError('Not a valid m3u8 master playlist file')
+        }
+
         const lines = m3u8.split('\n').filter(x => x).map(x => x.trim())
 
         try{
             const directives = this._getDirectives(lines)
-            const playlists = {}
+            const masterPlaylist = {}
 
             for(let i=0; i < lines.length; i++){
                 if(IsDirectiveLine(lines[i])){
-                    Object.assign(playlists, this._bagAndTagResourcePaths({idx: i, lines, directives}))
+                    if(!lines[i].includes(M3U8_IDENTIFIER) && !lines[i].includes(MASTER_DIRECTIVES.VERSION)){
+                        Object.assign(masterPlaylist, this._packURIs({lines, directives, idx: i, m3u8Type: 'master'}))
+                    }
                 }
             }
-            return playlists
+            return masterPlaylist
         } catch(err){
             logger.error('An error occurred while unpacking resource paths', err)
             throw err
         }
     }
 
-    static _bagAndTagResourcePaths({idx, lines, directives}){
-        const directiveName = this._directiveOf(lines[idx])
-        const playlist = {}
+    static _packURIs({idx, lines, directives, m3u8Type}){
+        const URIs = {}
 
-        switch(directiveName){
-            case DIRECTIVES.STREAM_INFO:
+        switch(m3u8Type){
+            case 'master':
                 const match = directives.find((directive) => directive.line === lines[idx])
-
                 if(match){
                     const resourcePath = lines[idx+1]
                     if(resourcePath.includes('.m3u8')){
-                        playlist[match.value[PLAYLIST_DIRECTIVE_PARAMS.resolution].height] = resourcePath
+                        URIs[match.value[MASTER_DIRECTIVE_ATTRS.resolution].height] = resourcePath
                     } else if(IsDirectiveLine(resourcePath)){
-                        throw new Error(`Missing Resource Path: m3u8 file is missing a resource path, ${DIRECTIVES.STREAM_INFO} tag must be followed by a resource.`)
+                        throw new Error(`Missing Resource Path: m3u8 file is missing a resource path, ${MASTER_DIRECTIVES.STREAM_INFO} tag must be followed by a resource.`)
                     } else {
                         throw new Error('Invalid M3u8: m3u8 file may be formatted incorrectly.')
                     }
@@ -82,12 +139,11 @@ class M3u8Parser {
                 }
                 break
 
-            case DIRECTIVES.VERSION:
-                // For uses cases concerning the HLS protocol and new
-                // features, e.g. floating point durations for playback.
+            case 'sequence':
+                
                 break
         }
-        return playlist
+        return URIs
     }
 
     /**
@@ -102,16 +158,40 @@ class M3u8Parser {
         }
 
         try {
-            lines = lines.filter(line => IsDirectiveLine(line) && line !== M3U8_SIGNITURE)
+            lines = lines.filter(line => IsDirectiveLine(line) && !line.includes(M3U8_IDENTIFIER) && !line.includes(MASTER_DIRECTIVES.VERSION))
             const directives = []
             for(const line of lines){
                 const directive = this._directiveOf(line)
-                const value = directive === DIRECTIVES.STREAM_INFO ? this._getParams(line, DIRECTIVES.STREAM_INFO) : this._valueOf(line);
+                const value = directive === MASTER_DIRECTIVES.STREAM_INFO ? this._getParams(line, MASTER_DIRECTIVES.STREAM_INFO) : this._valueOf(line);
                 directives.push({directive, value, line})
             }
             return directives
         } catch(err){
-            logger.error('An error occured while parsing M3u8 directives')
+            logger.error('An error occured while parsing M3u8 directives', err)
+            throw err
+        }
+    }
+
+    static _getURIs(lines, type = null){
+        if(!Array.isArray(lines)){
+            throw new TypeError(`Expected an Array type input. Given type '${typeof lines}'.`)
+        }
+
+        try{
+            const URIs = lines.filter((line) => {
+                if(line.startsWith('#')) return false;
+                
+                const URIExtension = line.split('.').toReversed()[0]
+                if(type && type === 'media'){
+                    return config.resources.acceptmediaType.includes(URIExtension)
+                } else if(!type){
+                    return config.resources.acceptmediaType.includes(URIExtension) || config.resources.acceptFileTypes.includes(URIExtension) ? true : false;
+                } 
+            })
+
+            return URIs
+        } catch(err){
+            logger.error("M3u8Parser Error: Failed to get the URI's from M3u8 file.", err)
             throw err
         }
     }
@@ -152,19 +232,19 @@ class M3u8Parser {
         else if(!IsDirectiveLine(line)){
             throw new TypeError('Not a valid m3u8 directive line.')
         }
-        else if(directive && !line.includes(DIRECTIVES.STREAM_INFO)){
+        else if(directive && !line.includes(MASTER_DIRECTIVES.STREAM_INFO)){
             throw new Error('Unexpected directive! Directive does not match line.')
         }
 
         if(!line.includes('=')) return;
 
-        if(directive === DIRECTIVES.STREAM_INFO){
+        if(directive === MASTER_DIRECTIVES.STREAM_INFO){
             const kv = this._valueOf(line).split(',').map((kvString) => kvString.split('='))
             const params = Object.fromEntries(new Map(kv))
             
-            if(params[PLAYLIST_DIRECTIVE_PARAMS.resolution]){
-                const res = params[PLAYLIST_DIRECTIVE_PARAMS.resolution].split('x')
-                params[PLAYLIST_DIRECTIVE_PARAMS.resolution] = {height: res[1], width: res[0]}
+            if(params[MASTER_DIRECTIVE_ATTRS.resolution]){
+                const res = params[MASTER_DIRECTIVE_ATTRS.resolution].split('x')
+                params[MASTER_DIRECTIVE_ATTRS.resolution] = {height: res[1], width: res[0]}
             }
             return params
         }
@@ -186,9 +266,10 @@ class M3u8Parser {
         }
 
         const valuestart = line.indexOf(':')
-        const value = line.substring(valuestart+1, line.length)
+        let value = line.substring(valuestart+1, line.length)
+        value = value.charAt(-1) === ',' ? value.replace(',', '') : value;
         return value
     }
 }
 
-module.exports = { M3u8Parser, DIRECTIVES }
+module.exports = { M3u8Parser, MASTER_DIRECTIVES }
