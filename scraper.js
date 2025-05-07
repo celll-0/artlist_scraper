@@ -5,6 +5,8 @@ const { SessionProxyManager } = require("./proxy.js");
 const axios = require('axios')
 const logger = require('winston');
 const config = require('./config.js');
+const { createReadStream, createWriteStream } = require('node:fs');
+const crypto = require('crypto')
 
 
 const IsM3u8Playlist = (url) => url.includes('.m3u8') && url.includes('playlist')
@@ -86,27 +88,57 @@ async function buildDriver(){
 
 async function fetchFromResourceServer(resourceName){
     const resourceFileExtension = resourceName.split('.').toReversed()[0]
-    if(!config.resources.acceptFileTypes.includes(resourceFileExtension)){
+    console.log('EXT: ', resourceFileExtension)
+    if(!config.resources.acceptFileTypes.includes(resourceFileExtension) && !config.resources.acceptmediaType.includes(resourceFileExtension)){
         throw new TypeError('The resource file is not of an accepted type')
     }
 
     const url = config.resources.resourceServerUrl + resourceName
-    const resource = new Promise(async (resolve, reject) => {
+    switch(resourceFileExtension){
+        case 'm3u8': var resource = await artlist_fetchMediaPlaylist(url)
+            break;
+        
+        case 'ts': var resource = await artlist_fetchMedia(url)
+            break
+    }
+    return resource
+}
+
+async function artlist_fetchMediaPlaylist(url){
+    const playlist = new Promise(async (resolve, reject) => {
         try {
             const chunks = []
-            const {data: stream} = await axios.get( url, { method: 'get', responseType: 'stream' })
+            const {data: stream, ...res} = await axios.get( url, { method: 'get', responseType: 'stream' })
             stream.on('data', (data) => chunks.push(data))
             stream.on('close', () => {
                 const m3u8ASCII = Buffer.concat(chunks).toString('utf-8')
                 resolve(m3u8ASCII)
             })
             stream.on('error', (error) => {throw error})
+            console.log('RESOURCE RES: ', res)
         } catch(err){
             logger.error('An error occured while fetching m3u8 files!')
             reject(err)
         }
     })
-    return resource    
+    return playlist
+}
+
+async function artlist_fetchMedia(url){
+    try {
+        const {data, ...res} = await axios.get( url, {
+            method: 'get', responseType: 'stream',
+            headers: {
+                Accept: 'video/mpeg',
+        }})
+        const filePath = `./temp/${crypto.randomBytes(10).toString('hex')}-clip.ts`
+        data.pipe(createWriteStream(filePath))
+        return filePath
+    } catch(err){
+        logger.error('An error occured while fetching m3u8 files!')
+        reject(err)
+    }
+    return playlist
 }
 
 module.exports = { catchResourceNetActivity, fetchFromResourceServer, IsM3u8Playlist }

@@ -6,6 +6,10 @@ module.exports = {
         acceptResourceTypePaths: {
             footage: "stock-footage/clip"
         }, 
-        acceptProtocols: ['https://']
+        acceptProtocols: ['https://'],
+        acceptContentTypes: {
+            m3u8: 'application\vnd.apple.mpegurl',
+            // ts: ,
+        }
     },
 }

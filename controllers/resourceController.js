@@ -26,7 +26,11 @@ const footageResourceController = async (req, res) => {
         const sequenceM3u8Str = await fetchFromResourceServer(masterPlaylist[resolution])
         const sequence = M3u8Parser.segments(sequenceM3u8Str)
 
-        res.status(200).json(sequence)
+        const tsClips = []
+        for(let i=0; i > sequence.segments.length; i++){
+            tsClips.push(await fetchFromResourceServer(sequence.segments[i].uri))
+        }
+        res.status(200).json(tsClips)
     } catch(err){
         logger.error('ResourceController Error: ', err)
         res.status(500).json({ error: err.message })
@@ -34,28 +38,6 @@ const footageResourceController = async (req, res) => {
 }
 
 
-
-const cTest = (req, res) => {
-    try {
-        const file = `
-            #EXTM3U
-            #EXT-X-VERSION:3
-            #EXT-X-TARGETDURATION:6
-            #EXT-X-MEDIA-SEQUENCE:0
-            #EXT-X-PLAYLIST-TYPE:VOD
-            #EXTINF:5.760000,
-            4b54378d-f3c6-4365-b965-7d659f0095ee_2160p_000_1709719789.ts
-            #EXTINF:1.200000,
-            4b54378d-f3c6-4365-b965-7d659f0095ee_2160p_001_1709719789.ts
-            #EXT-X-ENDLIST`
-
-        const result = M3u8Parser.playlists(file, 'EXT-X-STREAM-INF')
-        res.json(result)
-    } catch(err){
-        logger.error('TestRoute Error: ', err)
-        res.status(500).json({error: err.message})
-    }
-}
-
+const cTest = () => {}
 
 module.exports = { footageResourceController, cTest }
