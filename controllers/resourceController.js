@@ -27,10 +27,11 @@ const footageResourceController = async (req, res) => {
         const sequence = M3u8Parser.segments(sequenceM3u8Str)
 
         const tsClips = []
-        for(let i=0; i > sequence.segments.length; i++){
+        for(let i=0; i < sequence.segments.length; i++){
             tsClips.push(await fetchFromResourceServer(sequence.segments[i].uri))
         }
-        res.status(200).json(tsClips)
+        
+        res.status(200).json(sequence)
     } catch(err){
         logger.error('ResourceController Error: ', err)
         res.status(500).json({ error: err.message })
