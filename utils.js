@@ -1,9 +1,10 @@
 const config = require('./config.js')
+const fs = require('node:fs')
+const path = require('node:path')
 
 
 const validResourceURL = (url, { acceptType }) => {
     const acceptResourceTypeList = Object.keys(config.resources.acceptResourceTypePaths)
-    console.log(acceptResourceTypeList)
     if(!acceptResourceTypeList.includes(acceptType)){
         throw new TypeError('Resource type does not exist.')
     }
@@ -23,4 +24,50 @@ const validResourceURL = (url, { acceptType }) => {
     return false
 }
 
-module.exports = { validResourceURL }
+
+const removeTempFiles = (tempFiles) => {
+    if(removeTempFiles.length === 0){
+        throw new Error('File array must contain at least on file')
+    }
+
+    const isTempDir = (file) => path.dirname(file) === config.tempFiles.dir;
+    const isTempFile = (file) => path.basename(file).includes(config.tempFiles.filenameTag)
+    tempFiles.forEach((filename) => {
+        if(!isTempDir(filename) || !isTempFile(filename)){
+            throw new TypeError('File is not a temp file or is not in the applications temp directiory.')
+        }
+
+        fs.rm(filename)
+    })
+}
+
+
+const getFootageResourceName = (url) => {
+    if(!(typeof url === 'string')){
+        throw new TypeError('Url must be a string.')
+    }
+
+    if(!url.includes(config.resources.acceptResourceTypePaths.footage)){
+        return
+    }
+
+    const resourceNameFromPath = url.split('/').toReversed()[1]
+    return resourceNameFromPath
+}
+
+
+const getFootageResourceID = (url) => {
+    if(!(typeof url === 'string')){
+        throw new TypeError('Url must be a string.')
+    }
+
+    if(!url.includes(config.resources.acceptResourceTypePaths.footage)){
+        return
+    }
+
+    const resourceIDFromPath = url.split('/').toReversed()[0]
+    return resourceIDFromPath
+}
+
+
+module.exports = { validResourceURL, removeTempFiles, getFootageResourceName, getFootageResourceID }

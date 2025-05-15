@@ -1,3 +1,5 @@
+const path = require('path')
+
 module.exports = {
     resources: {
         resourceServerUrl: 'https://cms-public-artifacts.artlist.io/content/artgrid/footage-hls/',
@@ -12,4 +14,8 @@ module.exports = {
             // ts: ,
         }
     },
+    tempFiles: {
+        filenameTag: 'tempSegment',
+        dir: path.join(__dirname, 'temp'),
+    }
 }

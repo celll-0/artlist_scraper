@@ -70,7 +70,6 @@ async function catchResourceNetActivity(url){
 
 async function fetchFromResourceServer(resourceName){
     const resourceFileExtension = resourceName.split('.').toReversed()[0]
-    console.log('Current file type: ', resourceFileExtension)
     if(!config.resources.acceptFileTypes.includes(resourceFileExtension) && !config.resources.acceptmediaType.includes(resourceFileExtension)){
         throw new TypeError('The resource file is not of an accepted type')
     }
@@ -80,7 +79,7 @@ async function fetchFromResourceServer(resourceName){
         case 'm3u8': var resource = await artlist_fetchMediaPlaylist(url)
             break;
         
-        case 'ts': var resource = await artlist_fetchMedia(url)
+        case 'ts': var resource = await artlist_fetchMedia(url, resourceName)
             break
     }
     return resource
@@ -122,29 +121,33 @@ async function artlist_fetchMediaPlaylist(url){
     return playlist
 }
 
-async function artlist_fetchMedia(url){
-    try {
-        const {data: stream, ...res} = await axios.get( url, {
-            method: 'get', responseType: 'stream',
-            headers: {
-                Accept: 'video/mpeg',
-        }})
-        
-        const filePath = `./temp/${crypto.randomBytes(10).toString('hex')}-clip.ts`
+async function artlist_fetchMedia(url, resourceName){
+    return new Promise(async (resolve, reject) => {
+        try {
+            const {data: stream, ...res} = await axios.get( url, {
+                method: 'get', responseType: 'stream',
+                headers: {
+                    Accept: 'video/mpeg',
+            }})
+            
+            const filePath = path.join(config.tempFiles.dir, `${config.tempFiles.filenameTag}-${resourceName}`) 
 
-        stream.on('data', data => logger.info(`Recieving data packet for... ${filePath}`))
-        stream.on('close', event => logger.info(`Stream Ended!`))
-        stream.on('error', (err) => {
-            throw new Error(`FetchMedia Error: Axios media stream failed for '${filePath}'.`, err)
-        })
+            stream.on('data', data => console.info(`Recieving data chunk for... ${filePath}`))
+            stream.on('end', (event) => {
+                console.info(`Stream Ended!`)
+                resolve(filePath)
+            })
+            stream.on('error', (err) => {
+                throw new Error(`FetchMedia Error: Axios media stream failed for '${filePath}'.`, err)
+            })
 
-        await stream.pipe(createWriteStream(filePath))
-        return filePath
-    } catch(err){
-        logger.error('An error occured while fetching m3u8 files!')
-        reject(err)
-    }
-    return playlist
+            await stream.pipe(createWriteStream(filePath))
+        } catch(err){
+            logger.error('An error occured while fetching m3u8 files!')
+            reject(err)
+        }
+    })
+    
 }
 
 module.exports = { catchResourceNetActivity, fetchFromResourceServer, IsM3u8Playlist }

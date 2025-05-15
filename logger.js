@@ -1,4 +1,4 @@
-const { createLogger, format, config, transports } = require('winston')
+const { createLogger, format, transports } = require('winston')
 
 /*  sysLevels__
     emerg: 0 | alert: 1,
@@ -8,14 +8,10 @@ const { createLogger, format, config, transports } = require('winston')
 */
 
 const logger = createLogger({
-    format: format.combine(
-        format.colorize(),
-        format.simple(),
-    ),
-    transports: [
-        new transports.Console({ format: format.errors({stack: true})})
-    ],
+    level: 'info',
+    format: format.cli(),
 })
 
+logger.add(new transports.File({filename: './winston-log.log', level: 'info'}))
 
 module.exports = { logger }
