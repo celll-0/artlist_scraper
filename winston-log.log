@@ -1,1 +1,19 @@
 [32minfo[39m:    ffmpeg merge complete!
+[32minfo[39m:    ffmpeg merge complete!
+[32minfo[39m:    ffmpeg merge complete!
+[31merror[39m:   ResourceController Error:  spawn C:\Users\Nazareth\Desktop\Projects\artlist_scraper\src\undetected_chromedriver.exe ENOENT
+[31merror[39m:   ResourceController Error:  spawn C:\Users\Nazareth\Desktop\Projects\undetected_chromedriver.exe ENOENT
+[31merror[39m:   ResourceController Error:  spawn C:\Users\Nazareth\Desktop\Projects\artlist_scraper\src\C:\Users\Nazareth\Desktop\Projects\undetected_chromedriver.exe ENOENT
+[31merror[39m:   ResourceController Error:  The "paths[1]" argument must be of type string. Received function chromedriver
+[31merror[39m:   ResourceController Error:  spawn C:\Users\Nazareth\Desktop\Projects\artlist_scraper\src\C:\Users\Nazareth\Desktop\Projects\undetected_chromedriver.exe ENOENT
+[31merror[39m:   ResourceController Error:  spawn C:\Users\Nazareth\Desktop\Projects\undetected_chromedriver.exe ENOENT
+[31merror[39m:   ResourceController Error:  The "to" argument must be of type string. Received undefined
+[31merror[39m:   ResourceController Error:  config.paths.chromedriver is not a function
+[31merror[39m:   ResourceController Error:  spawn ..\undetected_chromedriver.exe ENOENT
+[31merror[39m:   ResourceController Error:  spawn C:\Users\Nazareth\Desktop\Projects\undetected_chromedriver.exe ENOENT
+[31merror[39m:   ResourceController Error:  Invalid URL
+[31merror[39m:   ResourceController Error:  Invalid URL
+[31merror[39m:   ResourceController Error:  Invalid URL
+[31merror[39m:   ResourceController Error:  Invalid URL
+[31merror[39m:   ResourceController Error:  Invalid URL
+[32minfo[39m:    ffmpeg merge complete!
