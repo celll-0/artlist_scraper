@@ -6,8 +6,7 @@ const axios = require('axios')
 const { logger } = require('./logger.js');
 const config = require('./config.js');
 const { createWriteStream } = require('node:fs');
-const { awaitPageElemLoad } = require('./utils.js')
-const { includesM3u8Path } = require('./utils.js')
+const { awaitPageElemLoad, pathIncludesM3u8 } = require('./utils.js')
 
 
 
@@ -53,7 +52,7 @@ async function catchResourceNetActivity(url){
             const transactionData = JSON.parse(Obj.message)
             const { message: { params: { request, requestId }}} = transactionData
         
-            if(includesM3u8Path(request.url)){
+            if(pathIncludesM3u8(request.url)){
                 networkActivity.push({ requestId, request })
             }
         }

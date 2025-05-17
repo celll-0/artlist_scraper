@@ -39,7 +39,6 @@ const IsM3u8Sequence = (m3u8) => IsValidM3u8(m3u8) && m3u8.includes(MASTER_DIREC
 const IsDirectiveLine = (line) => line.startsWith('#EXT')
 const IsSequenceDirective = (dir) => dir === DIRECTIVES.SEQUENCE_DURATION || dir === DIRECTIVES.SEQUENCE_NUMBER || dir === DIRECTIVES.PLAYLIST_TYPE || dir === DIRECTIVES.ENDLIST
 
-
 class M3u8Parser {
 
     static segments(m3u8){
@@ -79,7 +78,6 @@ class M3u8Parser {
                         }
                     }
                 }
-
                 sequence.segments.push(segment)
             }
             return sequence

@@ -4,6 +4,9 @@ const path = require('node:path')
 const { until, By } = require('selenium-webdriver')
 const { logger } = require('./logger.js')
 
+
+const pathIncludesM3u8 = (url) => url.includes('.m3u8') && url.includes('playlist')
+
 const validResourceURL = (url, { acceptType }) => {
     const acceptResourceTypeList = Object.keys(config.resources.acceptResourceTypePaths)
     if(!acceptResourceTypeList.includes(acceptType)){
@@ -41,7 +44,6 @@ const removeTempFiles = (tempFiles) => {
             if(err) logger.warn(`${err}`);
         })
     })
-
     logger.info('Temp files cleared!')
 }
 
@@ -89,8 +91,5 @@ async function awaitPageElemLoad(driver, elemSelector){
     await driver.wait(isPlaying, 6000)
 }
 
-function includesM3u8Path(url){
-    return url.includes('.m3u8') && url.includes('playlist')
-}
 
-module.exports = { validResourceURL, removeTempFiles, getFootageResourceName, getFootageResourceID, awaitPageElemLoad, includesM3u8Path }
+module.exports = { validResourceURL, removeTempFiles, getFootageResourceName, getFootageResourceID, awaitPageElemLoad, pathIncludesM3u8 }
