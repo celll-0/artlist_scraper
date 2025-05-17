@@ -1,5 +1,6 @@
 const axios = require("axios")
 const config = require('./config.js')
+const { logger } = require('./logger.js')
 
 class SessionProxyManager {
     constructor({ mode = "direct", sessionDuration = 60000 }){
@@ -58,7 +59,7 @@ class SessionProxyManager {
                 console.log({ id, proxy_address, port, country_code, valid })
             }
         } catch(err){
-            console.error("An error occurred whie fetching proxy list!")
+            logger.error("An error occurred whie fetching proxy list!")
             throw err
         }
     }
@@ -78,7 +79,7 @@ class SessionProxyManager {
             this.currentProxy = this.proxyList[randomProxyListIndex]
             this.lastAssignedTime = Date.now()
             this.isFresh = true
-            console.log(`Session proxy obtained! Activate session proxy id => ${ this.currentProxy.id }`)
+            logger.info(`Session proxy obtained! Activate session proxy id => ${ this.currentProxy.id }`)
         }
         return this.currentProxy
     }
@@ -112,7 +113,7 @@ class SessionProxyManager {
             const proxyDetails = await res.data
             return proxyDetails
         } catch(err){
-            console.log("An error occured while fetching the proxy details.")
+            logger.error("An error occured while fetching the proxy details.")
             throw err
         }
     }

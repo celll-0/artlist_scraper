@@ -1,7 +1,8 @@
 const config = require('./config.js')
 const fs = require('node:fs')
 const path = require('node:path')
-
+const { until, By } = require('selenium-webdriver')
+const { logger } = require('./logger.js')
 
 const validResourceURL = (url, { acceptType }) => {
     const acceptResourceTypeList = Object.keys(config.resources.acceptResourceTypePaths)
@@ -30,15 +31,18 @@ const removeTempFiles = (tempFiles) => {
         throw new Error('File array must contain at least on file')
     }
 
-    const isTempDir = (file) => path.dirname(file) === config.tempFiles.dir;
-    const isTempFile = (file) => path.basename(file).includes(config.tempFiles.filenameTag)
+    const isTempDir = (file) => path.dirname(file) === config.temp.dir;
+    const isTempFile = (file) => path.basename(file).includes(config.temp.filenameTag)
     tempFiles.forEach((filename) => {
         if(!isTempDir(filename) || !isTempFile(filename)){
             throw new TypeError('File is not a temp file or is not in the applications temp directiory.')
         }
-
-        fs.rm(filename)
+        fs.rm(filename, (err) => {
+            if(err) logger.warn(`${err}`);
+        })
     })
+
+    logger.info('Temp files cleared!')
 }
 
 
@@ -70,4 +74,23 @@ const getFootageResourceID = (url) => {
 }
 
 
-module.exports = { validResourceURL, removeTempFiles, getFootageResourceName, getFootageResourceID }
+async function awaitPageElemLoad(driver, elemSelector){    
+    // Wait for the video element to load
+    logger.info("Awaiting master playlist files...")
+    await driver.wait(until.elementLocated(By.css(elemSelector)), 6000)
+    logger.info("Master playlist files loaded!")
+
+    // Wait for the video element to play.
+    // |_ Assumes the auto is enable for the element.
+    const videoElem = driver.executeScript(`return document.querySelector('${elemSelector}')`)
+    const isPlaying = async () => await driver.executeScript(`
+        return arguments[0].currentTime > 0 && !arguments[0].paused && !arguments[0].ended
+    `, videoElem)
+    await driver.wait(isPlaying, 6000)
+}
+
+function includesM3u8Path(url){
+    return url.includes('.m3u8') && url.includes('playlist')
+}
+
+module.exports = { validResourceURL, removeTempFiles, getFootageResourceName, getFootageResourceID, awaitPageElemLoad, includesM3u8Path }

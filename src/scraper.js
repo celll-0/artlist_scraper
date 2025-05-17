@@ -1,14 +1,14 @@
-const { Builder, until, By } = require('selenium-webdriver')
+const { Builder} = require('selenium-webdriver')
 const chrome = require('selenium-webdriver/chrome')
 const path = require('node:path')
 const { SessionProxyManager } = require("./proxy.js");
 const axios = require('axios')
-const logger = require('winston');
+const { logger } = require('./logger.js');
 const config = require('./config.js');
 const { createWriteStream } = require('node:fs');
+const { awaitPageElemLoad } = require('./utils.js')
+const { includesM3u8Path } = require('./utils.js')
 
-
-const IsM3u8Playlist = (url) => url.includes('.m3u8') && url.includes('playlist')
 
 
 async function buildDriver(){
@@ -41,7 +41,7 @@ async function catchResourceNetActivity(url){
     try {
         await driver.get(url)
         
-        await awaitVideoAndM3u8Files(driver)
+        await awaitPageElemLoad(driver, 'video')
         const networkLogs = await driver.manage().logs().get("performance")
         const sentRequests = networkLogs.filter((transaction) => {
             const transactionData = JSON.parse(transaction.message)
@@ -53,14 +53,14 @@ async function catchResourceNetActivity(url){
             const transactionData = JSON.parse(Obj.message)
             const { message: { params: { request, requestId }}} = transactionData
         
-            if(IsM3u8Playlist(request.url)){
+            if(includesM3u8Path(request.url)){
                 networkActivity.push({ requestId, request })
             }
         }
 
         return networkActivity
     } catch(err){
-        logger.error('An error occurred while scraping the site')
+        logger.error('An error occurred while scraping the site', err)
         throw err
     } finally {
         await driver.quit()
@@ -74,32 +74,18 @@ async function fetchFromResourceServer(resourceName){
     }
 
     const url = config.urls.resourceServerUrl + resourceName
-    console.log('LOG FILE: ', config.urls.resourceServerUrl)
-    switch(resourceFileExtension){
-        case 'm3u8': var resource = await artlist_fetchMediaPlaylist(url)
-            break;
-        
-        case 'ts': var resource = await artlist_fetchMedia(url, resourceName)
-            break
+    try {
+        switch(resourceFileExtension){
+            case 'm3u8': var resource = await artlist_fetchMediaPlaylist(url)
+                break;
+            
+            case 'ts': var resource = await artlist_fetchMedia(url, resourceName)
+                break
+        }
+        return resource
+    } catch(err){
+        throw new Error("ResourceFetch Error: ", err)
     }
-    return resource
-}
-
-async function awaitVideoAndM3u8Files(driver){
-    const videoElemSelector = 'video'
-    
-    // Wait for the video element to load
-    logger.info("Awaiting master files...")
-    await driver.wait(until.elementLocated(By.css(videoElemSelector)), 6000)
-    logger.info("Video Element loaded!")
-
-    // Wait for the video element to play.
-    // |_ Assumes the auto is enable for the element.
-    const videoElem = driver.executeScript(`return document.querySelector('${videoElemSelector}')`)
-    const isPlaying = async () => await driver.executeScript(`
-        return arguments[0].currentTime > 0 && !arguments[0].paused && !arguments[0].ended
-    `, videoElem)
-    await driver.wait(isPlaying, 6000)
 }
 
 async function artlist_fetchMediaPlaylist(url){
@@ -114,8 +100,9 @@ async function artlist_fetchMediaPlaylist(url){
             })
             stream.on('error', (error) => {throw error})
         } catch(err){
-            logger.error('An error occured while fetching m3u8 files!')
+            logger.error('An error occured while fetching m3u8 files!', err)
             reject(err)
+            throw err
         }
     })
     return playlist
@@ -130,24 +117,27 @@ async function artlist_fetchMedia(url, resourceName){
                     Accept: 'video/mpeg',
             }})
             
-            const filePath = path.join(config.tempFiles.dir, `${config.tempFiles.filenameTag}-${resourceName}`) 
+            const filePath = path.join(config.temp.dir, `${config.temp.filenameTag}-${resourceName}`)
+            const wStream = createWriteStream(filePath)
+            await stream.pipe(wStream)
 
-            stream.on('data', data => console.info(`Recieving data chunk for... ${filePath}`))
+            stream.on('data', data => logger.info(`Recieving data chunk for... ${filePath}`))
             stream.on('end', (event) => {
-                console.info(`Stream Ended!`)
-                resolve(filePath)
+                logger.info(`Stream Ended!`)
+                if(wStream.writableEnded === true){
+                    resolve(filePath)
+                    // wStream.wri
+                }
             })
             stream.on('error', (err) => {
                 throw new Error(`FetchMedia Error: Axios media stream failed for '${filePath}'.`, err)
             })
-
-            await stream.pipe(createWriteStream(filePath))
         } catch(err){
-            logger.error('An error occured while fetching m3u8 files!')
+            logger.error('An error occured while fetching m3u8 files!', err)
             reject(err)
+            throw err
         }
     })
-    
 }
 
-module.exports = { catchResourceNetActivity, fetchFromResourceServer, IsM3u8Playlist }
+module.exports = { catchResourceNetActivity, fetchFromResourceServer }
