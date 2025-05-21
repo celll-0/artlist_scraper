@@ -79,7 +79,7 @@ const getFootageResourceID = (url) => {
 async function awaitPageElemLoad(driver, elemSelector){    
     // Wait for the video element to load
     logger.info("Awaiting master playlist files...")
-    await driver.wait(until.elementLocated(By.css(elemSelector)), 6000)
+    await driver.wait(until.elementLocated(By.css(elemSelector)), 15000)
     logger.info("Master playlist files loaded!")
 
     // Wait for the video element to play.

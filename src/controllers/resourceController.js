@@ -4,7 +4,7 @@ const { validResourceURL, pathIncludesM3u8 } = require('../utils.js')
 const { mergeTsSegments, sequenceFromMaster, getSegmentsFromCMS } = require('../footage.js')
  
 const footageResourceController = async (req, res) => {
-    const {resource: url, resolution, format} = req.body.resource
+    const {resource: url, resolution, format} = req.body
     try {
         if(!validResourceURL(url, {acceptType: 'footage'})){
             res.status(400).json({ error: new TypeError("Invalid resource URL").message })
