@@ -1,6 +1,6 @@
 const { catchResourceNetActivity } = require("../scraper.js")
 const { logger } = require('../logger.js')
-const { validResourceURL, pathIncludesM3u8 } = require('../utils.js')
+const { validResourceURL, pathIncludesM3u8, removeTempFiles } = require('../utils.js')
 const { mergeTsSegments, sequenceFromMaster, getSegmentsFromCMS } = require('../footage.js')
  
 
@@ -21,10 +21,11 @@ const footageResourceController = async (req, res) => {
 
         const sequence = await sequenceFromMaster(masterPlaylistName, resolution)
         const segmentRefs = await getSegmentsFromCMS(sequence.segments)
-        const {footageOutputPath, resourceName} = mergeTsSegments(segmentRefs, url, format)
-        res.status(200).sendFile(resourceName, footageOutputPath, (err) => {
+        const footageOutputPath = await mergeTsSegments(segmentRefs, url, format)
+        res.status(200).sendFile(footageOutputPath, (err) => {
             err ? logger.error('Resource Error: Could not send file in response.\n', err) : logger.info('Video file Sent');
         })
+        removeTempFiles(footageOutputPath)
     } catch(err){
         logger.error('Resource Error: ', err)
         res.status(500).json({ error: err.message })

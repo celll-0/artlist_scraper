@@ -34,6 +34,8 @@ const removeTempFiles = (tempFiles) => {
         throw new Error('File array must contain at least on file')
     }
 
+    setTimeout(()=>{}, 2000)
+
     const isTempDir = (file) => path.dirname(file) === config.temp.dir;
     const isTempFile = (file) => path.basename(file).includes(config.temp.filenameTag)
     tempFiles.forEach((filename) => {

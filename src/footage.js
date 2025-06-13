@@ -31,9 +31,8 @@ async function getSegmentsFromCMS(segments){
 }
 
 
-function mergeTsSegments(segmentsArray, url, ext){
+async function mergeTsSegments(segmentsArray, url, ext){
     try {
-        const resourceName = getFootageResourceName(url)
         const ffmpeg_command = ffmpeg()
         segmentsArray.forEach(segmentPath => {
             const segmentExists = fs.existsSync(segmentPath)
@@ -45,24 +44,36 @@ function mergeTsSegments(segmentsArray, url, ext){
             }
         });
         
-        const footageOutputPath = path.join(config.temp.dir, `${resourceName}.${ext}`)
-        ffmpeg_command
-            .mergeToFile(footageOutputPath, {tempDir: config.temp.dir})
-                .on('end', () => {
-                    logger.info('ffmpeg merge complete!')
-                    removeTempFiles(segmentsArray)
-                })
-                .on('error', (err) => {
-                    logger.error('Failed to merge ts segments.\n', err)
-                    throw err
-                })
+        const resourceName = getFootageResourceName(url)
+        const footageOutputPath = await executeMerge(ffmpeg_command, segmentsArray, resourceName, ext)        
 
-        return {footageOutputPath, resourceName}
+        return footageOutputPath
     } catch(err){
         logger.error('FootageMerge Error: ', err)
         throw err
     }
 }
 
+async function executeMerge(ffmpeg_command, segmentsArray, resourceName, ext){
+    const footageOutputPath = path.join(config.temp.dir, `${resourceName}.${ext}`)
+    return new Promise((resolve, reject) => {
+        try {
+            ffmpeg_command.mergeToFile(footageOutputPath, {tempDir: config.temp.dir})
+                .on('end', () => {
+                    logger.info('ffmpeg merge complete!')
+                    resolve(footageOutputPath)
+                    removeTempFiles(segmentsArray)
+                })
+                .on('error', (err) => {
+                    logger.error('Failed to merge ts segments.\n', err)
+                    removeTempFiles(segmentsArray)
+                    reject(err)
+                })
+        } catch(err){
+            logger.error('Merge Error: Issue occurred during merge.\n', err)
+            reject(err)
+        }
+    })
+}
 
 module.exports = { mergeTsSegments, sequenceFromMaster, getSegmentsFromCMS }
