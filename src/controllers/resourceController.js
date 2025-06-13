@@ -3,6 +3,7 @@ const { logger } = require('../logger.js')
 const { validResourceURL, pathIncludesM3u8 } = require('../utils.js')
 const { mergeTsSegments, sequenceFromMaster, getSegmentsFromCMS } = require('../footage.js')
  
+
 const footageResourceController = async (req, res) => {
     const {resource: url, resolution, format} = req.body
     try {
@@ -20,8 +21,10 @@ const footageResourceController = async (req, res) => {
 
         const sequence = await sequenceFromMaster(masterPlaylistName, resolution)
         const segmentRefs = await getSegmentsFromCMS(sequence.segments)
-        const footage = mergeTsSegments(segmentRefs, url, format)
-        res.status(200).json(footage)
+        const {footageOutputPath, resourceName} = mergeTsSegments(segmentRefs, url, format)
+        res.status(200).sendFile(resourceName, footageOutputPath, (err) => {
+            err ? logger.error('Resource Error: Could not send file in response.\n', err) : logger.info('Video file Sent');
+        })
     } catch(err){
         logger.error('Resource Error: ', err)
         res.status(500).json({ error: err.message })
