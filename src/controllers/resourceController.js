@@ -25,7 +25,6 @@ const footageResourceController = async (req, res) => {
         res.status(200).sendFile(footageOutputPath, (err) => {
             err ? logger.error('Resource Error: Could not send file in response.\n', err) : logger.info('Video file Sent');
         })
-        removeTempFiles(footageOutputPath)
     } catch(err){
         logger.error('Resource Error: ', err)
         res.status(500).json({ error: err.message })

@@ -8,7 +8,7 @@ const path = require('node:path')
 const fs = require('node:fs')
 
 
-async function sequenceFromMaster(masterUrl, resolution, url){
+async function buildStreamSequence(masterUrl, resolution, url){
     // fetch and parse the master playlist based on the resolution 
     const masterM3u8Str = await fetchFromResourceServer(masterUrl)
     const masterPlaylist = M3u8Parser.master(masterM3u8Str, MASTER_DIRECTIVES.STREAM_INFO)
@@ -76,4 +76,4 @@ async function executeMerge(ffmpeg_command, segmentsArray, resourceName, ext){
     })
 }
 
-module.exports = { mergeTsSegments, sequenceFromMaster, getSegmentsFromCMS }
+module.exports = { mergeTsSegments, buildStreamSequence, getSegmentsFromCMS }
