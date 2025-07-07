@@ -21,10 +21,10 @@ const validResourceURL = (url, { acceptType }) => {
         } else if(!validProtocol){
             throw new TypeError("Invalid protocol! Protocol must be 'https'.")
         }
-
+        
         return url
     }
-
+    
     return false
 }
 

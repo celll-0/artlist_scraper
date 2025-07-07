@@ -21,7 +21,7 @@ async function buildStreamSequence(masterUrl, resolution, url){
 }
 
 
-async function getSegmentsFromCMS(segments){
+async function fetchStreamSegments(segments){
     const segmentRefs = []
     for(let i=0; i < segments.length; i++){ 
         const tsFile = await fetchFromResourceServer(segments[i].uri)
@@ -31,7 +31,7 @@ async function getSegmentsFromCMS(segments){
 }
 
 
-async function mergeTsSegments(segmentsArray, url, ext){
+async function buildVideoFromSegments(segmentsArray, url, ext){
     try {
         const ffmpeg_command = ffmpeg()
         segmentsArray.forEach(segmentPath => {
@@ -76,4 +76,4 @@ async function executeMerge(ffmpeg_command, segmentsArray, resourceName, ext){
     })
 }
 
-module.exports = { mergeTsSegments, buildStreamSequence, getSegmentsFromCMS }
+module.exports = { buildVideoFromSegments, buildStreamSequence, fetchStreamSegments }
