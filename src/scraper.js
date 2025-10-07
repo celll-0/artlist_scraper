@@ -11,9 +11,8 @@ const { awaitPageElemLoad, pathIncludesM3u8 } = require('./utils.js')
 
 
 async function buildDriver(){
-    const sessionProxyManager = new SessionProxyManager({ mode: "direct", sessionDuration: 60000})
-    const proxy = await sessionProxyManager.sessionProxy()
- 
+    // const sessionProxyManager = new SessionProxyManager({ mode: "direct", sessionDuration: 60000})
+    // const proxy = await sessionProxyManager.sessionProxy()
     const chromeDriverPath = config.paths.chromedriver;
     const chromeExePath = config.paths.chromeExe
 
@@ -21,16 +20,17 @@ async function buildDriver(){
     chromeOptions.setChromeBinaryPath(chromeExePath)
     chromeOptions.setLoggingPrefs({'performance': "ALL"})
     chromeOptions.setPerfLoggingPrefs({enableNetwork: true})
-
-    console.log({chromeOptions: chromeOptions.map_})
+    chromeOptions.addArguments("--headless=new")
+    chromeOptions.addArguments("--disable-blink-features=AutomationControlled")
+    chromeOptions.addArguments(`user-agent=${"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.53 Safari/537.36"}`)
+    chromeOptions.excludeSwitches(["enable-automation"])
 
     const driver = new Builder()
         .forBrowser('chrome')
         .setChromeOptions(chromeOptions)
-        // .setProxy(seleniumProxy.manual({https: `${proxy.proxy_address}:${proxy.port}>`}))
-        // .setChromeOptions(chromeOptions.addArguments("--headless=new"))
         .setChromeService(new chrome.ServiceBuilder(chromeDriverPath))
         .build();
+        // .setProxy(seleniumProxy.manual({https: `${proxy.proxy_address}:${proxy.port}>`}))
 
     return driver
 }
@@ -120,9 +120,16 @@ async function artlist_fetchMedia(url, resourceName){
             const wStream = createWriteStream(filePath)
             await stream.pipe(wStream)
 
-            stream.on('data', data => logger.info(`Recieving data chunk for... ${filePath}`))
+            let downloadingData = false
+            stream.on('data', data => {
+                if(!downloadingData){
+                    downloadingData = true
+                    logger.info("Downloading video chunks...")
+                }
+            })
             stream.on('end', (event) => {
                 logger.info(`Stream Ended!`)
+                downloadingData = false
                 if(wStream.writableEnded === true){
                     resolve(filePath)
                     // wStream.wri
