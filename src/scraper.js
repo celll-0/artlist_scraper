@@ -1,5 +1,6 @@
 const { Builder} = require('selenium-webdriver')
 const chrome = require('selenium-webdriver/chrome')
+const seleniumProxy = require('selenium-webdriver/proxy')
 const path = require('node:path')
 const { SessionProxyManager } = require("./proxy.js");
 const axios = require('axios')
@@ -11,8 +12,8 @@ const { awaitPageElemLoad, pathIncludesM3u8 } = require('./utils.js')
 
 
 async function buildDriver(){
-    // const sessionProxyManager = new SessionProxyManager({ mode: "direct", sessionDuration: 60000})
-    // const proxy = await sessionProxyManager.sessionProxy()
+    const sessionProxyManager = new SessionProxyManager({ mode: "direct", sessionDuration: 60000})
+    const proxy = await sessionProxyManager.sessionProxy()
     const chromeDriverPath = config.paths.chromedriver;
     const chromeExePath = config.paths.chromeExe
 
@@ -29,8 +30,8 @@ async function buildDriver(){
         .forBrowser('chrome')
         .setChromeOptions(chromeOptions)
         .setChromeService(new chrome.ServiceBuilder(chromeDriverPath))
+        .setProxy(seleniumProxy.manual({https: `${proxy.proxy_address}:${proxy.port}>`}))
         .build();
-        // .setProxy(seleniumProxy.manual({https: `${proxy.proxy_address}:${proxy.port}>`}))
 
     return driver
 }
