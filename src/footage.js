@@ -2,7 +2,7 @@ const ffmpeg = require('fluent-ffmpeg')
 const config = require('./config.js')
 const { logger } = require('./logger.js');
 const { removeTempFiles, getFootageResourceName } = require('./utils.js')
-const { fetchFromResourceServer } = require("./scraper.js")
+const Scraper = require("./scraper.js")
 const { M3u8Parser, MASTER_DIRECTIVES } = require('./m3u8.js')
 const path = require('node:path')
 const fs = require('node:fs')
@@ -10,11 +10,11 @@ const fs = require('node:fs')
 
 async function buildStreamSequence(masterUrl, resolution, url){
     // fetch and parse the master playlist based on the resolution 
-    const masterM3u8Str = await fetchFromResourceServer(masterUrl)
+    const masterM3u8Str = await Scraper.fetchFromResourceServer(masterUrl)
     const masterPlaylist = M3u8Parser.master(masterM3u8Str, MASTER_DIRECTIVES.STREAM_INFO)
 
     // fetch and parse the sequence playlist based on the resolution 
-    const sequenceM3u8Str = await fetchFromResourceServer(masterPlaylist[resolution])
+    const sequenceM3u8Str = await Scraper.fetchFromResourceServer(masterPlaylist[resolution])
     const sequence = M3u8Parser.segments(sequenceM3u8Str)
     logger.debug(`${sequence}`)
     return sequence
@@ -24,7 +24,7 @@ async function buildStreamSequence(masterUrl, resolution, url){
 async function fetchStreamSegments(segments){
     const segmentRefs = []
     for(let i=0; i < segments.length; i++){ 
-        const tsFile = await fetchFromResourceServer(segments[i].uri)
+        const tsFile = await Scraper.fetchFromResourceServer(segments[i].uri)
         segmentRefs.push(tsFile)
     }
     return segmentRefs

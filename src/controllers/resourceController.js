@@ -1,4 +1,4 @@
-const { catchResourceNetActivity } = require("../scraper.js")
+const Scraper = require("../scraper.js")
 const { logger } = require('../logger.js')
 const { validResourceURL, pathIncludesM3u8 } = require('../utils.js')
 const { buildVideoFromSegments, buildStreamSequence, fetchStreamSegments } = require('../footage.js')
@@ -11,7 +11,7 @@ const footageResourceController = async (req, res) => {
             res.status(400).json({ error: new TypeError("Invalid resource URL").message })
         }
 
-        const activity = await catchResourceNetActivity(resourceUrl)
+        const activity = await Scraper.searchNetworkActivity(resourceUrl)
         if(activity.length >= 1){
             const resource = activity.find((transaction) => pathIncludesM3u8(transaction.request.url))
             var masterPlaylistName = resource.request.url.split('/').toReversed()[0]
