@@ -78,6 +78,15 @@ const getFootageResourceID = (url) => {
 }
 
 
+const gethostnameFromUrl = (url) => {
+    if(!(typeof url === 'string')){
+        throw new TypeError('Url must be a string.')
+    }
+
+    const urlObj = new URL(url)
+    return urlObj.hostname
+}
+
 async function awaitPageElemLoad(driver, elemSelector){    
     // Wait for the video element to load
     logger.info("Awaiting master playlist files...")
@@ -94,4 +103,12 @@ async function awaitPageElemLoad(driver, elemSelector){
 }
 
 
-module.exports = { validResourceURL, removeTempFiles, getFootageResourceName, getFootageResourceID, awaitPageElemLoad, pathIncludesM3u8 }
+module.exports = {
+    validResourceURL,
+    removeTempFiles,
+    getFootageResourceName,
+    getFootageResourceID,
+    awaitPageElemLoad,
+    pathIncludesM3u8,
+    gethostnameFromUrl
+}

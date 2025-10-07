@@ -1,6 +1,7 @@
 const axios = require("axios")
 const config = require('./config.js')
 const { logger } = require('./logger.js')
+const { gethostnameFromUrl } = require('./utils.js')
 
 class SessionProxyManager {
     constructor({ mode = "direct", sessionDuration = 60000 }){
@@ -38,7 +39,7 @@ class SessionProxyManager {
          * class properties.
          */
         try {
-            console.log("Fetching proxy list...")
+            logger.info("Obtaining proxies from proxy server...")
             const res = await axios({
                 method: "GET",
                 url: this.apiUrl,
@@ -48,18 +49,22 @@ class SessionProxyManager {
                     page_size: this.proxyListSize,
                 },
                 headers: {
-                    Authorization: `Token ${process.env.PROXY_AUTH_TOKEN}`
+                    Authorization: `Token ${process.env['PROXY_AUTH_TOKEN']}`
                 }
             })
 
             this.proxyList = await res.data.results
 
-            for(const proxy in this.proxyList){
-                const { id, proxy_address, port, country_code, valid,...otherProxyDetails } = proxy
-                console.log({ id, proxy_address, port, country_code, valid })
+            if(this.proxyList.length === 0){
+                throw new Error("No proxies were obtained from the proxy server.")
+            }
+
+            logger.info("Proxies:")
+            for (const proxy of this.proxyList) {
+                logger.info(`==> ${gethostnameFromUrl(this.apiUrl)} | ${proxy.id} | ${proxy.proxy_address}:${proxy.port}`)
             }
         } catch(err){
-            logger.error("An error occurred whie fetching proxy list!")
+            logger.error("Unable to access proxy list!")
             throw err
         }
     }
