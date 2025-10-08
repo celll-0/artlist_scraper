@@ -1,7 +1,7 @@
 const Scraper = require("../scraper.js")
 const { logger } = require('../logger.js')
 const { validResourceURL, pathIncludesM3u8 } = require('../utils.js')
-const { buildVideoFromSegments, buildStreamSequence, fetchStreamSegments } = require('../footage.js')
+const { buildVideoFromSegments, getStreamSequence, fetchStreamSegments } = require('../footage.js')
  
 
 const footageResourceController = async (req, res) => {
@@ -16,11 +16,11 @@ const footageResourceController = async (req, res) => {
             const resource = activity.find((transaction) => pathIncludesM3u8(transaction.request.url))
             var masterPlaylistName = resource.request.url.split('/').toReversed()[0]
         } else {
-            throw new Error('Failed to located resource playlist! Resource either does not exist or search criteria is incorrect.')
+            throw new Error('Failed to locate resource playlist! Resource either does not exist or is not in M3U8 format.')
         }
 
         // fetch and build the sequence playlist from master as segment references
-        const sequence = await buildStreamSequence(masterPlaylistName, resolution)
+        const sequence = await getStreamSequence(masterPlaylistName, resolution)
         // fetch the whole sequence to temp/
         const segmentPaths = await fetchStreamSegments(sequence.segments)
         // merge all resource segments to temp/
