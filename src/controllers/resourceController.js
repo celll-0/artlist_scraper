@@ -1,6 +1,6 @@
 const Scraper = require("../scraper.js")
 const { logger } = require('../logger.js')
-const { validResourceURL, pathIncludesM3u8 } = require('../utils.js')
+const { validResourceURL, findFirstPlaylist } = require('../utils.js')
 const { buildVideoFromSegments, getStreamSequence, fetchStreamSegments } = require('../footage.js')
  
 
@@ -10,17 +10,11 @@ const footageResourceController = async (req, res) => {
         if(!validResourceURL(resourceUrl, {acceptType: 'footage'})){
             res.status(400).json({ error: new TypeError("Invalid resource URL").message })
         }
-
+        // Search the network activity for the resource URL containing m3u8 files
         const activity = await Scraper.searchNetworkActivity(resourceUrl)
-        if(activity.length >= 1){
-            const resource = activity.find((transaction) => pathIncludesM3u8(transaction.request.url))
-            var masterPlaylistName = resource.request.url.split('/').toReversed()[0]
-        } else {
-            throw new Error('Failed to locate resource playlist! Resource either does not exist or is not in M3U8 format.')
-        }
-
-        // fetch and build the sequence playlist from master as segment references
-        const sequence = await getStreamSequence(masterPlaylistName, resolution)
+        // Find the first resource with the M3U8 file type, as the masster playlist is required
+        // to locate all full sequences. Then fetch and build the sequence segment reference list.
+        const sequence = await getStreamSequence(findFirstPlaylist(activity), resolution)
         // fetch the whole sequence to temp/
         const segmentPaths = await fetchStreamSegments(sequence.segments)
         // merge all resource segments to temp/
