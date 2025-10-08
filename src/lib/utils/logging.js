@@ -1,18 +1,71 @@
 const { createLogger, format, transports } = require('winston')
 
-/*  sysLevels__
-    emerg: 0 | alert: 1,
-    crit: 2 | error: 3,
-    warning: 4 | notice: 5,
-    info: 6 | debug: 7
-*/
+/**
+ * @callback ShowProxiesFn
+ * @param {Array<{id:string,proxy_address:string,port:number}>} proxies
+ * @param {string} [origin]
+ * @returns {void}
+ */
 
-const logger = createLogger({
-    format: format.simple()
-})
+/**
+ * @callback SetLogLevelFn
+ * @param {string} [level]
+ * @returns {void}
+ */
 
-// logger.add(new transports.File({level: 'info', filename: config.paths.logFile}))
+/**
+ * @typedef {import('winston').Logger & { showProxies: ShowProxiesFn, setLogLevel: SetLogLevelFn }} CustomLogger
+ */
 
-logger.add(new transports.Console({level: 'debug', format: format.cli()}))
+/**
+ * Factory function type for creating an application logger.
+ * @callback CreateAppLogger
+ * @param {object} [opts] createLogger options
+ * @returns {CustomLogger}
+ */
 
-module.exports = { logger }
+/**
+ * Create a new logger instance and attach helper methods.
+ * This preserves the prototype-level level methods that winston's
+ * `createLogger` adds (info, warn, debug, isInfoEnabled, etc.).
+ *
+ * @param {object} opts createLogger options
+ * @returns {CustomLogger}
+ */
+function createAppLogger(opts = {}) {
+    /** @type {CustomLogger} */
+    const logger = createLogger(opts)
+
+    // Use LOG_LEVEL env var (default 'info') so debug noise can be silenced
+    const consoleLevel = (process.env.LOG_LEVEL || 'info').toLowerCase()
+    const consoleFormat = format.printf(({ message }) => message)
+    logger.add(new transports.Console({ level: consoleLevel, format: consoleFormat }))
+
+    logger.showProxies = function (proxies, origin = 'unknown') {
+        if (!proxies || !proxies.length) return
+        for (const proxy of proxies) {
+            logger.info(`==> ${origin} | ${proxy.id} | ${proxy.proxy_address}:${proxy.port}`)
+        }
+    }       
+
+    /**
+     * Change console transport level at runtime.
+     * @param {string} level
+     */
+    logger.setLogLevel = function (level) {
+        const lvl = (level || process.env.LOG_LEVEL || 'info').toLowerCase()
+        for (const t of logger.transports || []) {
+            // transports.Console is a constructor function; comparing by name is safer
+            if (t.constructor && t.constructor.name === 'Console') {
+                t.level = lvl
+            }
+        }
+    }
+
+    return logger
+}
+
+// Default shared logger instance used by the codebase.
+const logger = createAppLogger({ format: format.simple() })
+
+module.exports = { createAppLogger, logger }

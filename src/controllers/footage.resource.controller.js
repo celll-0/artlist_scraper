@@ -3,7 +3,6 @@ const { buildVideoFromSegments, getStreamSequence, fetchStreamSegments } = requi
 const { logger } = require('../lib/utils/logging.js')
 const { validResourceURL } = require('../lib/utils/url_processing.js')
 const { findFirstPlaylist } = require('../lib/utils/file_ops.js')
- 
 
 const footageResourceController = async (req, res) => {
     const {resourceUrl, resolution, format} = req.body

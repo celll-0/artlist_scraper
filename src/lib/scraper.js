@@ -26,10 +26,19 @@ class Scraper {
         const options = Scraper._buildChromeOptions(chromeExePath)
         const chromeDriverPath = config.paths.chromedriver;
         // Configure driver settings
+        // Silence chromedriver/DevTools verbose output by routing service logs
+        // to the platform null device and lowering chrome's log level.
+        const nullDevice = process.platform === 'win32' ? 'NUL' : '/dev/null'
+        const serviceBuilder = new chrome.ServiceBuilder(chromeDriverPath).loggingTo(nullDevice)
+
+        // Add flags to reduce Chromium logging noise
+        options.addArguments('--log-level=3')
+        options.addArguments('--v=0')
+
         const driver = new Builder()
             .forBrowser('chrome')
             .setChromeOptions(options)
-            .setChromeService(new chrome.ServiceBuilder(chromeDriverPath))
+            .setChromeService(serviceBuilder)
             .setProxy(seleniumProxy.manual({https: `${proxy.proxy_address}:${proxy.port}>`}))
             .build();
 
@@ -126,7 +135,10 @@ class Scraper {
                 const transactionData = JSON.parse(Obj.message)
                 const { message: { params: { request, requestId }}} = transactionData
             
-                if(pathIncludesM3u8(request.url)) networkActivity.push({ requestId, request });
+                if(pathIncludesM3u8(request.url)){
+                    // Instrumentation: record when DevTools captured this request
+                    networkActivity.push({ requestId, request });
+                }
             }
 
             return networkActivity
