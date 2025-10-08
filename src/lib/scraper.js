@@ -1,13 +1,13 @@
-const { Builder} = require('selenium-webdriver')
+const axios = require('axios')
+const path = require('node:path')
+const { createWriteStream } = require('node:fs');
+const { Builder, until, By} = require('selenium-webdriver')
 const chrome = require('selenium-webdriver/chrome')
 const seleniumProxy = require('selenium-webdriver/proxy')
-const path = require('node:path')
 const { SessionProxyManager } = require("./proxy.js");
-const axios = require('axios')
-const { logger } = require('./logger.js');
-const config = require('./config.js');
-const { createWriteStream } = require('node:fs');
-const { awaitPageElemLoad, pathIncludesM3u8 } = require('./utils.js')
+const { logger } = require('./utils/logging.js');
+const { pathIncludesM3u8 } = require('./utils/url_processing.js')
+const config = require('../config.js');
 
 
 class Scraper {
@@ -70,6 +70,23 @@ class Scraper {
         return chromeOptions
     }
 
+    
+    static async waitOnElementLoad(driver, elemSelector){    
+        // Wait for the video element to load
+        logger.info("Awaiting master playlist files...")
+        await driver.wait(until.elementLocated(By.css(elemSelector)), 15000)
+        logger.info("Master playlist files loaded!")
+
+        // Wait for the video element to play.
+        // |_ Assumes the auto is enable for the element.
+        const videoElem = driver.executeScript(`return document.querySelector('${elemSelector}')`)
+        const isPlaying = async () => await driver.executeScript(`
+            return arguments[0].currentTime > 0 && !arguments[0].paused && !arguments[0].ended
+        `, videoElem)
+        await driver.wait(isPlaying, 6000)
+    }
+
+
     /**
      * Retrieves a session proxy from the SessionProxyManager for managing proxy connections.
      * The proxy can be configured with different modes and session durations for flexible proxy management.
@@ -101,7 +118,7 @@ class Scraper {
         const driver = await Scraper._buildDriver()
         try {
             await driver.get(url)
-            await awaitPageElemLoad(driver, 'video')
+            await Scraper.waitOnElementLoad(driver, 'video')
             const requestsOnLanding = await Scraper.extractNetworkActivityRequests(driver)
             
             const networkActivity = []

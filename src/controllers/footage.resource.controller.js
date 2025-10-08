@@ -1,7 +1,8 @@
-const Scraper = require("../scraper.js")
-const { logger } = require('../logger.js')
-const { validResourceURL, findFirstPlaylist } = require('../utils.js')
-const { buildVideoFromSegments, getStreamSequence, fetchStreamSegments } = require('../footage.js')
+const Scraper = require("../lib/scraper.js")
+const { buildVideoFromSegments, getStreamSequence, fetchStreamSegments } = require('../services/footage.service.js')
+const { logger } = require('../lib/utils/logging.js')
+const { validResourceURL } = require('../lib/utils/url_processing.js')
+const { findFirstPlaylist } = require('../lib/utils/file_ops.js')
  
 
 const footageResourceController = async (req, res) => {
@@ -30,4 +31,4 @@ const footageResourceController = async (req, res) => {
 }
 
 
-module.exports = { footageResourceController }
+module.exports = footageResourceController

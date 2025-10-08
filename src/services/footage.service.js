@@ -1,11 +1,12 @@
-const ffmpeg = require('fluent-ffmpeg')
-const config = require('./config.js')
-const { logger } = require('./logger.js');
-const { removeTempFiles, getFootageResourceName } = require('./utils.js')
-const Scraper = require("./scraper.js")
-const { M3u8Parser, MASTER_DIRECTIVES } = require('./m3u8.js')
 const path = require('node:path')
 const fs = require('node:fs')
+const ffmpeg = require('fluent-ffmpeg')
+const Scraper = require("../lib/scraper.js")
+const { M3u8Parser, MASTER_DIRECTIVES } = require('../lib/m3u8.js')
+const { removeTempFiles} = require('../lib/utils/file_ops.js')
+const { getFootageResourceName } = require('../lib/utils/url_processing.js')
+const { logger } = require('../lib/utils/logging.js');
+const config = require('../config.js')
 
 
 async function getStreamSequence(masterUrl, resolution, url){

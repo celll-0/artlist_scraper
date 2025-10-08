@@ -1,7 +1,7 @@
 require('dotenv').config()
 const express = require('express')
 
-const { footageResourceController } = require('./src/controllers/resourceController.js')
+const footageResourceController = require('./src/controllers/footage.resource.controller.js')
 
 const app = express()
 const port = 8000

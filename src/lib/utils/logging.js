@@ -1,5 +1,4 @@
-const { createLogger, format, transports, config: winstonConfig } = require('winston')
-const config = require('./config.js')
+const { createLogger, format, transports } = require('winston')
 
 /*  sysLevels__
     emerg: 0 | alert: 1,

@@ -1,5 +1,5 @@
-const { logger } = require('./logger.js')
-const config = require('./config.js')
+const { logger } = require('./utils/logging.js')
+const config = require('../config.js')
 
 const M3U8_IDENTIFIER = '#EXTM3U'
 

@@ -1,7 +1,7 @@
 const axios = require("axios")
-const config = require('./config.js')
-const { logger } = require('./logger.js')
-const { gethostnameFromUrl } = require('./utils.js')
+const config = require('../config.js')
+const { logger } = require('./utils/logging.js')
+const { gethostnameFromUrl } = require('./utils/url_processing.js')
 
 class SessionProxyManager {
     constructor({ mode = "direct", sessionDuration = 60000 }){
