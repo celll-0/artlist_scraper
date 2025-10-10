@@ -19,6 +19,7 @@ module.exports = {
         clearAfterMergeTimeout: 500,
     },
     urls: {
+        hostMarker: 'cms-public-artifacts.artlist.io',
         resourceServerUrl: 'https://cms-public-artifacts.artlist.io/content/artgrid/footage-hls/',       
         proxyServer:  "https://proxy.webshare.io/api/v2/proxy/list/",
         proxyInspector: "https://pixelscan.net/s/api/ci"
